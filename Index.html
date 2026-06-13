@@ -1,0 +1,2419 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>ADNlab — Sistema Administrativo</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #f8f7f4; --surface: #ffffff; --surface2: #f2f1ee;
+    --border: rgba(0,0,0,0.10); --border-md: rgba(0,0,0,0.18);
+    --text: #1a1a18; --text2: #5a5a57; --text3: #8a8a87;
+    --accent: #1d9e75; --accent-light: #e1f5ee; --accent-dark: #0f6e56;
+    --amber: #ba7517; --amber-light: #faeeda;
+    --red: #a32d2d; --red-light: #fcebeb;
+    --blue: #185fa5; --blue-light: #e6f1fb;
+    --purple: #534ab7; --purple-light: #eeedfe;
+    --radius: 10px; --radius-lg: 14px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #181816; --surface: #232320; --surface2: #2c2c29;
+      --border: rgba(255,255,255,0.09); --border-md: rgba(255,255,255,0.15);
+      --text: #f0efe8; --text2: #a0a09a; --text3: #686864;
+      --accent: #1d9e75; --accent-light: #04342c; --accent-dark: #5dcaa5;
+      --amber: #ef9f27; --amber-light: #412402;
+      --red: #f09595; --red-light: #501313;
+      --blue: #85b7eb; --blue-light: #042c53;
+      --purple: #afa9ec; --purple-light: #26215c;
+    }
+  }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; font-size: 14px; line-height: 1.5; }
+  .app { display: flex; min-height: 100vh; }
+  .sidebar { width: 220px; background: var(--surface); border-right: 0.5px solid var(--border); display: flex; flex-direction: column; position: fixed; top: 0; left: 0; bottom: 0; z-index: 10; overflow-y: auto; }
+  .main { margin-left: 220px; flex: 1; padding: 28px 32px; max-width: 980px; }
+  .sidebar-brand { padding: 20px 20px 16px; border-bottom: 0.5px solid var(--border); }
+  .brand-name { font-size: 17px; font-weight: 600; color: var(--text); letter-spacing: -0.3px; }
+  .brand-sub { font-size: 11px; color: var(--text3); margin-top: 2px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .nav { padding: 12px 0; flex: 1; }
+  .nav-section { font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.6px; padding: 10px 20px 4px; font-weight: 500; }
+  .nav-item { display: flex; align-items: center; gap: 10px; padding: 8px 20px; cursor: pointer; color: var(--text2); font-size: 13.5px; transition: all 0.12s; border-left: 2.5px solid transparent; }
+  .nav-item:hover { background: var(--surface2); color: var(--text); }
+  .nav-item.active { background: var(--accent-light); color: var(--accent-dark); border-left-color: var(--accent); font-weight: 500; }
+  .nav-item i { font-size: 17px; flex-shrink: 0; }
+  .sidebar-footer { padding: 16px 20px; border-top: 0.5px solid var(--border); font-size: 11px; color: var(--text3); }
+  .page-header { margin-bottom: 24px; display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  .page-header-left .page-title { font-size: 20px; font-weight: 600; color: var(--text); letter-spacing: -0.3px; }
+  .page-header-left .page-sub { font-size: 13px; color: var(--text3); margin-top: 3px; }
+  .section { display: none; } .section.active { display: block; }
+  .card { background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 20px 22px; margin-bottom: 16px; }
+  .card-title { font-size: 11px; font-weight: 500; color: var(--text3); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 14px; }
+  .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin-bottom: 20px; }
+  .metric { background: var(--surface2); border-radius: var(--radius); padding: 14px 16px; }
+  .metric-label { font-size: 11px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 6px; }
+  .metric-value { font-size: 22px; font-weight: 600; color: var(--text); letter-spacing: -0.5px; }
+  .metric-sub { font-size: 11px; color: var(--text3); margin-top: 2px; }
+  .form-row { display: grid; gap: 12px; margin-bottom: 12px; }
+  .form-row.cols-2 { grid-template-columns: 1fr 1fr; }
+  .form-row.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+  .form-row.cols-4 { grid-template-columns: 1fr 1fr 1fr 1fr; }
+  .field { display: flex; flex-direction: column; gap: 5px; }
+  label { font-size: 12px; color: var(--text2); font-weight: 500; }
+  input, select, textarea { background: var(--bg); border: 0.5px solid var(--border-md); border-radius: var(--radius); padding: 8px 11px; font-size: 13.5px; color: var(--text); width: 100%; font-family: inherit; transition: border-color 0.12s; outline: none; }
+  input:focus, select:focus, textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(29,158,117,0.12); }
+  textarea { resize: vertical; min-height: 70px; }
+  .btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: var(--radius); border: 0.5px solid var(--border-md); background: transparent; color: var(--text); font-size: 13px; cursor: pointer; font-family: inherit; transition: all 0.12s; white-space: nowrap; }
+  .btn:hover { background: var(--surface2); }
+  .btn:active { transform: scale(0.98); }
+  .btn-primary { background: var(--accent); border-color: var(--accent); color: white; }
+  .btn-primary:hover { background: var(--accent-dark); border-color: var(--accent-dark); }
+  .btn-danger { color: var(--red); border-color: transparent; }
+  .btn-danger:hover { background: var(--red-light); }
+  .btn-sm { padding: 5px 10px; font-size: 12px; }
+  .btn-row { display: flex; gap: 8px; align-items: center; margin-top: 16px; flex-wrap: wrap; }
+  .result-box { background: var(--accent-light); border: 0.5px solid var(--accent); border-radius: var(--radius-lg); padding: 18px 22px; margin-top: 16px; }
+  .result-main { font-size: 28px; font-weight: 700; color: var(--accent-dark); letter-spacing: -0.5px; }
+  .result-label { font-size: 12px; color: var(--accent-dark); opacity: 0.75; margin-bottom: 4px; }
+  .result-breakdown { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 14px; }
+  .result-item .ri-label { font-size: 11px; color: var(--text3); }
+  .result-item .ri-val { font-size: 13px; font-weight: 500; color: var(--text); margin-top: 1px; }
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; padding: 9px 12px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.4px; color: var(--text3); border-bottom: 0.5px solid var(--border); font-weight: 500; }
+  td { padding: 10px 12px; border-bottom: 0.5px solid var(--border); color: var(--text); vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: var(--surface2); }
+  .badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px; border-radius: 99px; font-size: 11px; font-weight: 500; white-space: nowrap; }
+  .badge-pending { background: var(--amber-light); color: var(--amber); }
+  .badge-progress { background: var(--blue-light); color: var(--blue); }
+  .badge-delivered { background: var(--accent-light); color: var(--accent-dark); }
+  .badge-cancelled { background: var(--surface2); color: var(--text3); }
+  .badge-low { background: var(--red-light); color: var(--red); }
+  .badge-ok { background: var(--accent-light); color: var(--accent-dark); }
+  .badge-warn { background: var(--amber-light); color: var(--amber); }
+  .empty { text-align: center; padding: 48px 20px; color: var(--text3); }
+  .empty i { font-size: 36px; margin-bottom: 10px; display: block; opacity: 0.4; }
+  .empty p { font-size: 13px; }
+  hr { border: none; border-top: 0.5px solid var(--border); margin: 16px 0; }
+  .modal-bg { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 100; align-items: center; justify-content: center; padding: 20px; }
+  .modal-bg.open { display: flex; }
+  .modal { background: var(--surface); border-radius: var(--radius-lg); width: 100%; max-width: 600px; max-height: 92vh; overflow-y: auto; padding: 24px; border: 0.5px solid var(--border-md); }
+  .modal-lg { max-width: 720px; }
+  .modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+  .modal-title { font-size: 16px; font-weight: 600; color: var(--text); }
+  .modal-close { background: none; border: none; color: var(--text3); cursor: pointer; padding: 4px 6px; border-radius: 6px; font-size: 18px; line-height: 1; }
+  .modal-close:hover { background: var(--surface2); color: var(--text); }
+  .toast { position: fixed; bottom: 24px; right: 24px; background: var(--text); color: var(--bg); padding: 10px 18px; border-radius: var(--radius); font-size: 13px; z-index: 200; opacity: 0; transform: translateY(8px); transition: all 0.2s; pointer-events: none; max-width: 340px; }
+  .toast.show { opacity: 1; transform: translateY(0); }
+  .tag { display: inline-block; background: var(--surface2); border: 0.5px solid var(--border); border-radius: 6px; padding: 2px 8px; font-size: 11px; color: var(--text2); }
+  .flex-gap { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .text-muted { color: var(--text3); } .text-sm { font-size: 12px; } .text-strong { font-weight: 600; }
+  .mt-4 { margin-top: 4px; } .mt-8 { margin-top: 8px; } .mt-16 { margin-top: 16px; }
+  .filter-bar { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; }
+  .filter-bar input, .filter-bar select { width: auto; min-width: 120px; }
+  .stock-bar { width: 80px; height: 6px; background: var(--surface2); border-radius: 3px; overflow: hidden; display: inline-block; vertical-align: middle; margin-right: 6px; }
+  .stock-bar-fill { height: 100%; border-radius: 3px; transition: width 0.3s; }
+  /* ── insumos picker ── */
+  .insumo-row { display: grid; grid-template-columns: 1fr 120px 90px auto; gap: 8px; align-items: center; padding: 8px 10px; border-radius: var(--radius); background: var(--surface2); margin-bottom: 6px; }
+  .insumo-row select, .insumo-row input { margin: 0; }
+  .insumo-row .stock-hint { font-size: 11px; color: var(--text3); margin-top: 2px; }
+  .stock-alert { background: var(--amber-light); border: 0.5px solid var(--amber); border-radius: var(--radius); padding: 10px 14px; font-size: 12.5px; color: var(--amber); display: flex; gap: 8px; align-items: flex-start; margin-top: 8px; }
+  .stock-alert i { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+  .stock-alert.error { background: var(--red-light); border-color: var(--red); color: var(--red); }
+  .reserved-badge { display: inline-flex; align-items: center; gap: 3px; background: var(--purple-light); color: var(--purple); border-radius: 99px; font-size: 10px; padding: 2px 7px; font-weight: 500; }
+
+  /* ── chart bars ── */
+  .chart-wrap { overflow-x: auto; padding-bottom: 8px; }
+  .chart { display: flex; align-items: flex-end; gap: 6px; height: 180px; padding: 0 4px; min-width: 400px; }
+  .chart-col { display: flex; flex-direction: column; align-items: center; gap: 4px; flex: 1; min-width: 36px; }
+  .chart-bars { display: flex; gap: 3px; align-items: flex-end; height: 150px; width: 100%; }
+  .chart-bar { flex: 1; border-radius: 4px 4px 0 0; min-height: 2px; transition: opacity 0.15s; cursor: default; position: relative; }
+  .chart-bar:hover { opacity: 0.8; }
+  .chart-bar[title]:hover::after { content: attr(title); position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); background: var(--text); color: var(--bg); padding: 3px 7px; border-radius: 5px; font-size: 11px; white-space: nowrap; pointer-events: none; margin-bottom: 4px; z-index: 10; }
+  .chart-label { font-size: 10px; color: var(--text3); text-align: center; }
+  .chart-legend { display: flex; gap: 16px; margin-bottom: 12px; flex-wrap: wrap; }
+  .chart-legend-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text2); }
+  .chart-legend-dot { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
+  /* ── alert banners ── */
+  .alert-banner { border-radius: var(--radius); padding: 12px 16px; margin-bottom: 10px; display: flex; align-items: flex-start; gap: 10px; font-size: 13px; }
+  .alert-banner i { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+  .alert-red  { background: var(--red-light);   color: var(--red);   border: 0.5px solid var(--red); }
+  .alert-amber{ background: var(--amber-light); color: var(--amber); border: 0.5px solid var(--amber); }
+  .alert-banner .ab-action { margin-left: auto; font-size: 12px; cursor: pointer; text-decoration: underline; opacity: 0.8; white-space: nowrap; padding-left: 8px; }
+  /* ── cliente card ── */
+  .cliente-card { background: var(--surface2); border-radius: var(--radius); padding: 14px 16px; margin-bottom: 8px; display: flex; align-items: center; gap: 14px; cursor: pointer; transition: background 0.12s; }
+  .cliente-card:hover { background: var(--border); }
+  .cliente-avatar { width: 38px; height: 38px; border-radius: 50%; background: var(--accent-light); color: var(--accent-dark); display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 600; flex-shrink: 0; }
+  .cliente-info { flex: 1; min-width: 0; }
+  .cliente-nombre { font-weight: 500; font-size: 14px; color: var(--text); }
+  .cliente-sub { font-size: 12px; color: var(--text3); margin-top: 1px; }
+  .cliente-stats { text-align: right; flex-shrink: 0; }
+  .cliente-total { font-weight: 600; font-size: 14px; color: var(--accent-dark); }
+  .cliente-pedidos { font-size: 11px; color: var(--text3); }
+  /* ── catalogo ── */
+  .catalogo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+  .cat-card { background: var(--surface2); border-radius: var(--radius-lg); padding: 16px; border: 0.5px solid var(--border); cursor: pointer; transition: all 0.12s; position: relative; }
+  .cat-card:hover { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-light); }
+  .cat-card-name { font-weight: 600; font-size: 14px; color: var(--text); margin-bottom: 6px; }
+  .cat-card-price { font-size: 18px; font-weight: 700; color: var(--accent-dark); margin-bottom: 4px; }
+  .cat-card-meta { font-size: 11px; color: var(--text3); line-height: 1.6; }
+  .cat-card-actions { position: absolute; top: 10px; right: 10px; display: flex; gap: 4px; opacity: 0; transition: opacity 0.12s; }
+  .cat-card:hover .cat-card-actions { opacity: 1; }
+  /* ── tipo de cambio banner ── */
+  .tc-banner { background: var(--blue-light); border: 0.5px solid var(--blue); border-radius: var(--radius); padding: 10px 16px; display: flex; align-items: center; gap: 10px; margin-bottom: 16px; font-size: 13px; color: var(--blue); flex-wrap: wrap; }
+  .tc-banner input { width: 90px; padding: 4px 8px; font-size: 13px; margin: 0; }
+  .tc-banner label { font-size: 12px; color: var(--blue); font-weight: 500; margin: 0; }
+  @media (max-width: 700px) {
+    .sidebar { display: none; } .main { margin-left: 0; padding: 16px; }
+    .form-row.cols-3, .form-row.cols-4 { grid-template-columns: 1fr 1fr; }
+    .insumo-row { grid-template-columns: 1fr 90px auto; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+<aside class="sidebar">
+  <div class="sidebar-brand">
+    <div class="brand-name" id="sb-brand">ADNlab</div>
+    <div class="brand-sub">Sistema Admin</div>
+  </div>
+  <nav class="nav">
+    <div class="nav-section">General</div>
+    <div class="nav-item active" onclick="showSection('dashboard')"><i class="ti ti-layout-dashboard"></i> Panel</div>
+    <div class="nav-section">Ventas</div>
+    <div class="nav-item" onclick="showSection('cotizador')"><i class="ti ti-calculator"></i> Cotizador</div>
+    <div class="nav-item" onclick="showSection('pedidos')"><i class="ti ti-clipboard-list"></i> Pedidos</div>
+    <div class="nav-item" onclick="showSection('historial')"><i class="ti ti-history"></i> Historial</div>
+    <div class="nav-section">Operaciones</div>
+    <div class="nav-item" onclick="showSection('materiales')"><i class="ti ti-package"></i> Materiales</div>
+    <div class="nav-item" onclick="showSection('catalogo')"><i class="ti ti-template"></i> Catálogo</div>
+    <div class="nav-item" onclick="showSection('clientes')"><i class="ti ti-users"></i> Clientes</div>
+    <div class="nav-item" onclick="showSection('rentabilidad')"><i class="ti ti-chart-bar"></i> Rentabilidad</div>
+    <div class="nav-section">Sistema</div>
+    <div class="nav-item" onclick="showSection('config')"><i class="ti ti-settings"></i> Configuración</div>
+  </nav>
+  <div class="sidebar-footer">v4.0 · ADNlab</div>
+</aside>
+
+<main class="main">
+
+<!-- ══ DASHBOARD ══ -->
+<div class="section active" id="sec-dashboard">
+  <div class="page-header">
+    <div class="page-header-left"><div class="page-title">Panel</div><div class="page-sub">Resumen de operación</div></div>
+  </div>
+  <div id="dash-alertas"></div>
+  <div class="metrics" id="dash-metrics"></div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+    <div class="card" style="margin-bottom:0"><div class="card-title">Pedidos activos</div><div id="dash-activos"></div></div>
+    <div class="card" style="margin-bottom:0"><div class="card-title">Stock bajo / reservado</div><div id="dash-stock"></div></div>
+  </div>
+</div>
+
+<!-- ══ COTIZADOR ══ -->
+<div class="section" id="sec-cotizador">
+  <div class="page-header">
+    <div class="page-header-left"><div class="page-title">Cotizador</div><div class="page-sub">Calculá costos, vinculá insumos del stock, generá PDF</div></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Datos del producto</div>
+    <div class="form-row cols-2">
+      <div class="field"><label>Nombre del producto</label><input type="text" id="q-nombre" placeholder="Ej: Maceta hexagonal 15cm" /></div>
+      <div class="field"><label>Cliente</label><input type="text" id="q-cliente" placeholder="Ej: María García" /></div>
+    </div>
+    <div class="form-row cols-2">
+      <div class="field"><label>Email del cliente (para el PDF)</label><input type="email" id="q-cliente-email" placeholder="cliente@email.com" /></div>
+      <div class="field"><label>Descripción para el cliente</label><input type="text" id="q-descripcion" placeholder="Aparecerá en el PDF" /></div>
+    </div>
+  </div>
+
+  <!-- FILAMENTO PRINCIPAL (libre o vinculado) -->
+  <div class="card">
+    <div class="card-title">Filamento / material de impresión</div>
+    <div style="display:flex;gap:10px;align-items:center;margin-bottom:12px;flex-wrap:wrap;">
+      <label style="font-size:12px;display:flex;align-items:center;gap:6px;cursor:pointer;">
+        <input type="checkbox" id="q-usar-stock-fil" onchange="toggleFilStock()" style="width:auto;" />
+        Usar material del stock
+      </label>
+      <span id="q-fil-stock-hint" class="text-sm text-muted"></span>
+    </div>
+    <!-- modo libre -->
+    <div id="q-fil-libre">
+      <div class="form-row cols-3">
+        <div class="field"><label>Gramos de filamento</label><input type="number" id="q-gramos" placeholder="0" min="0" step="1" oninput="calcCotizacion()" /></div>
+        <div class="field"><label>Costo por kg</label><input type="number" id="q-costo-kg" placeholder="0" min="0" step="0.01" oninput="calcCotizacion()" /></div>
+        <div class="field"><label>Unidades del producto</label><input type="number" id="q-unidades" value="1" min="1" oninput="calcCotizacion()" /></div>
+      </div>
+    </div>
+    <!-- modo stock -->
+    <div id="q-fil-stock" style="display:none">
+      <div class="form-row cols-3">
+        <div class="field">
+          <label>Material del stock</label>
+          <select id="q-stock-fil-id" onchange="onFilStockChange()"><option value="">— Seleccioná —</option></select>
+        </div>
+        <div class="field"><label>Gramos a usar (por unidad)</label><input type="number" id="q-gramos-stock" placeholder="0" min="0" step="1" oninput="calcCotizacion()" /></div>
+        <div class="field"><label>Unidades del producto</label><input type="number" id="q-unidades-stock" value="1" min="1" oninput="calcCotizacion()" /></div>
+      </div>
+      <div id="q-fil-stock-status"></div>
+    </div>
+  </div>
+
+  <!-- INSUMOS DEL STOCK -->
+  <div class="card">
+    <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+      <span>Insumos del stock <span class="text-muted" style="font-size:10px;font-weight:400;text-transform:none;">(opcional)</span></span>
+      <button class="btn btn-sm" onclick="agregarFilaInsumo()"><i class="ti ti-plus"></i> Agregar insumo</button>
+    </div>
+    <div id="q-insumos-lista"></div>
+    <div id="q-insumos-alerta"></div>
+    <div id="q-insumos-subtotal" style="margin-top:8px;font-size:12px;color:var(--text3);"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Tiempo</div>
+    <div class="form-row cols-3">
+      <div class="field"><label>Horas de impresión</label><input type="number" id="q-horas" placeholder="0" min="0" step="0.5" oninput="calcCotizacion()" /></div>
+      <div class="field"><label>Costo hora máquina</label><input type="number" id="q-costo-hora" placeholder="0" min="0" step="0.01" oninput="calcCotizacion()" /></div>
+      <div class="field"><label>Horas diseño/prep</label><input type="number" id="q-horas-diseno" placeholder="0" min="0" step="0.25" oninput="calcCotizacion()" /></div>
+    </div>
+    <div class="form-row cols-3">
+      <div class="field"><label>Costo hora diseño</label><input type="number" id="q-costo-diseno" placeholder="0" min="0" step="0.01" oninput="calcCotizacion()" /></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Otros costos manuales</div>
+    <div class="form-row cols-3">
+      <div class="field"><label>Post-proceso y acabado</label><input type="number" id="q-postproceso" value="0" min="0" step="0.01" oninput="calcCotizacion()" /></div>
+      <div class="field"><label>Insumos extras (libre)</label><input type="number" id="q-insumos-extra" value="0" min="0" step="0.01" oninput="calcCotizacion()" /></div>
+      <div class="field"><label>Envío estimado</label><input type="number" id="q-envio" value="0" min="0" step="0.01" oninput="calcCotizacion()" /></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Margen y precio</div>
+    <div class="form-row cols-4">
+      <div class="field"><label>Margen de ganancia (%)</label><input type="number" id="q-margen" value="40" min="0" max="500" oninput="calcCotizacion()" /></div>
+      <div class="field"><label>IVA / impuestos (%)</label><input type="number" id="q-iva" value="0" min="0" oninput="calcCotizacion()" /></div>
+      <div class="field"><label>Moneda</label>
+        <select id="q-moneda" onchange="calcCotizacion()">
+          <option value="ARS">ARS $</option><option value="USD">USD</option><option value="EUR">EUR €</option>
+        </select>
+      </div>
+      <div class="field"><label>Validez cotización (días)</label><input type="number" id="q-validez" value="7" min="1" /></div>
+    </div>
+  </div>
+
+  <div id="q-result" style="display:none">
+    <div class="result-box">
+      <div class="result-label">Precio de venta sugerido (por unidad)</div>
+      <div class="result-main" id="q-precio-final">—</div>
+      <div id="q-breakdown" class="result-breakdown"></div>
+    </div>
+    <div id="q-stock-warnings"></div>
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="guardarCotizacion()"><i class="ti ti-device-floppy"></i> Guardar cotización</button>
+      <button class="btn" onclick="exportarPDFCotizacion()"><i class="ti ti-file-type-pdf"></i> Exportar PDF</button>
+      <button class="btn" onclick="crearPedidoDesdeCot()"><i class="ti ti-clipboard-list"></i> Convertir en pedido</button>
+      <button class="btn" onclick="limpiarCotizador()"><i class="ti ti-refresh"></i> Limpiar</button>
+    </div>
+  </div>
+
+  <div id="q-cotizaciones-guardadas" class="mt-16"></div>
+</div>
+
+<!-- ══ PEDIDOS ══ -->
+<div class="section" id="sec-pedidos">
+  <div class="page-header">
+    <div class="page-header-left"><div class="page-title">Pedidos</div><div class="page-sub">Gestión de órdenes</div></div>
+    <button class="btn btn-primary" onclick="abrirModalPedido()"><i class="ti ti-plus"></i> Nuevo pedido</button>
+  </div>
+  <div class="filter-bar">
+    <button class="btn btn-sm" id="filt-todos" onclick="filtrarPedidos('todos')">Todos</button>
+    <button class="btn btn-sm" id="filt-pendiente" onclick="filtrarPedidos('pendiente')">Pendientes</button>
+    <button class="btn btn-sm" id="filt-en_proceso" onclick="filtrarPedidos('en_proceso')">En proceso</button>
+    <button class="btn btn-sm" id="filt-entregado" onclick="filtrarPedidos('entregado')">Entregados</button>
+    <button class="btn btn-sm" id="filt-cancelado" onclick="filtrarPedidos('cancelado')">Cancelados</button>
+  </div>
+  <div class="card" style="padding:0;overflow:hidden;"><div id="tabla-pedidos"></div></div>
+</div>
+
+<!-- ══ HISTORIAL ══ -->
+<div class="section" id="sec-historial">
+  <div class="page-header">
+    <div class="page-header-left"><div class="page-title">Historial de ventas</div><div class="page-sub">Pedidos entregados — filtrá por período</div></div>
+  </div>
+  <div class="card" style="padding:14px 20px;margin-bottom:16px;">
+    <div class="filter-bar" style="margin-bottom:0;gap:10px;align-items:flex-end;">
+      <div class="field" style="min-width:110px;"><label>Desde</label><input type="date" id="h-desde" onchange="renderHistorial()" /></div>
+      <div class="field" style="min-width:110px;"><label>Hasta</label><input type="date" id="h-hasta" onchange="renderHistorial()" /></div>
+      <div class="field" style="min-width:120px;"><label>Período rápido</label>
+        <select onchange="setPeriodo(this.value)">
+          <option value="">Personalizado</option><option value="mes">Este mes</option>
+          <option value="anterior">Mes anterior</option><option value="trimestre">Este trimestre</option>
+          <option value="anio">Este año</option><option value="todo">Todo</option>
+        </select>
+      </div>
+      <div class="field" style="min-width:120px;"><label>Medio de pago</label>
+        <select id="h-medio" onchange="renderHistorial()">
+          <option value="">Todos</option><option value="efectivo">Efectivo</option>
+          <option value="transferencia">Transferencia</option><option value="mercadopago">MercadoPago</option>
+          <option value="tarjeta">Tarjeta</option><option value="crypto">Cripto</option>
+        </select>
+      </div>
+      <button class="btn btn-sm" onclick="limpiarFiltrosHistorial()"><i class="ti ti-x"></i> Limpiar</button>
+    </div>
+  </div>
+  <div class="metrics" id="hist-metrics"></div>
+  <div style="display:flex;justify-content:flex-end;margin-bottom:10px;">
+    <button class="btn btn-sm" onclick="exportarCSV()"><i class="ti ti-table-export"></i> Exportar CSV</button>
+  </div>
+  <div class="card" style="padding:0;overflow:hidden;"><div id="tabla-historial"></div></div>
+</div>
+
+<!-- ══ MATERIALES ══ -->
+<div class="section" id="sec-materiales">
+  <div class="page-header">
+    <div class="page-header-left"><div class="page-title">Materiales e insumos</div><div class="page-sub">Stock de filamentos, resinas y consumibles</div></div>
+    <button class="btn btn-primary" onclick="abrirModalMaterial()"><i class="ti ti-plus"></i> Agregar</button>
+  </div>
+  <div class="metrics" id="mat-metrics"></div>
+  <div class="filter-bar">
+    <input type="text" id="mat-buscar" placeholder="Buscar..." oninput="renderMateriales()" style="max-width:200px;" />
+    <select id="mat-tipo-filt" onchange="renderMateriales()" style="max-width:160px;">
+      <option value="">Todos los tipos</option>
+      <option value="filamento">Filamento</option><option value="resina">Resina</option><option value="insumo">Insumo general</option>
+    </select>
+  </div>
+  <div class="card" style="padding:0;overflow:hidden;"><div id="tabla-materiales"></div></div>
+
+  <div class="card mt-16">
+    <div class="card-title">Registrar movimiento</div>
+    <div class="form-row cols-3">
+      <div class="field"><label>Material</label><select id="uso-mat-id"><option value="">— Seleccioná —</option></select></div>
+      <div class="field"><label>Cantidad</label><input type="number" id="uso-cantidad" placeholder="0" min="0" step="0.01" /></div>
+      <div class="field"><label>Motivo / referencia</label><input type="text" id="uso-motivo" placeholder="Ej: Pedido #001" /></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="registrarUso()"><i class="ti ti-minus"></i> Registrar salida</button>
+      <button class="btn" onclick="abrirModalReposicion()"><i class="ti ti-plus"></i> Registrar compra</button>
+    </div>
+  </div>
+
+  <div class="card mt-16">
+    <div class="card-title">Últimos 30 movimientos</div>
+    <div id="tabla-movimientos"></div>
+  </div>
+</div>
+
+<!-- ══ CONFIG ══ -->
+<div class="section" id="sec-config">
+  <div class="page-header">
+    <div class="page-header-left"><div class="page-title">Configuración</div><div class="page-sub">Datos del negocio y valores predeterminados</div></div>
+  </div>
+  <div class="card">
+    <div class="card-title">Datos del negocio (aparecen en el PDF)</div>
+    <div class="form-row cols-3">
+      <div class="field"><label>Nombre</label><input type="text" id="cfg-negocio" placeholder="ADNlab" /></div>
+      <div class="field"><label>Email</label><input type="email" id="cfg-email" placeholder="hola@adnlab.com" /></div>
+      <div class="field"><label>Teléfono / WhatsApp</label><input type="text" id="cfg-tel" placeholder="+54 9 11 ..." /></div>
+    </div>
+    <div class="form-row cols-3">
+      <div class="field"><label>Instagram</label><input type="text" id="cfg-ig" placeholder="@adnlab.3d" /></div>
+      <div class="field"><label>Sitio web</label><input type="text" id="cfg-web" placeholder="www.adnlab.com" /></div>
+      <div class="field"><label>Ciudad</label><input type="text" id="cfg-ciudad" placeholder="Buenos Aires, Argentina" /></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">Costos predeterminados</div>
+    <div class="form-row cols-3">
+      <div class="field"><label>Costo kg PLA</label><input type="number" id="cfg-kg-pla" placeholder="0" min="0" /></div>
+      <div class="field"><label>Costo kg PETG</label><input type="number" id="cfg-kg-petg" placeholder="0" min="0" /></div>
+      <div class="field"><label>Costo kg ABS</label><input type="number" id="cfg-kg-abs" placeholder="0" min="0" /></div>
+    </div>
+    <div class="form-row cols-3">
+      <div class="field"><label>Costo hora máquina</label><input type="number" id="cfg-hora" placeholder="0" min="0" /></div>
+      <div class="field"><label>Costo hora diseño</label><input type="number" id="cfg-hora-diseno" placeholder="0" min="0" /></div>
+      <div class="field"><label>Margen (%)</label><input type="number" id="cfg-margen" value="40" min="0" /></div>
+    </div>
+    <div class="form-row cols-2">
+      <div class="field"><label>Moneda</label><select id="cfg-moneda"><option value="ARS">ARS</option><option value="USD">USD</option><option value="EUR">EUR</option></select></div>
+      <div class="field"><label>Pie de página PDF</label><input type="text" id="cfg-pie" placeholder="Gracias por elegirnos" /></div>
+    </div>
+    <div class="btn-row"><button class="btn btn-primary" onclick="guardarConfig()"><i class="ti ti-device-floppy"></i> Guardar</button></div>
+  </div>
+  <div class="card">
+    <div class="card-title">Datos</div>
+    <div class="btn-row">
+      <button class="btn" onclick="exportarDatos()"><i class="ti ti-download"></i> Exportar JSON</button>
+      <button class="btn" onclick="importarDatos()"><i class="ti ti-upload"></i> Importar JSON</button>
+      <button class="btn btn-danger" onclick="confirmarBorrar()"><i class="ti ti-trash"></i> Borrar todo</button>
+    </div>
+    <input type="file" id="import-file" accept=".json" style="display:none" onchange="procesarImport(event)" />
+  </div>
+</div>
+
+<!-- ══ CLIENTES ══ -->
+<div class="section" id="sec-clientes">
+  <div class="page-header">
+    <div class="page-header-left"><div class="page-title">Clientes</div><div class="page-sub">Agenda y estadísticas por cliente</div></div>
+    <button class="btn btn-primary" onclick="abrirModalCliente()"><i class="ti ti-plus"></i> Nuevo cliente</button>
+  </div>
+  <div class="filter-bar">
+    <input type="text" id="cli-buscar" placeholder="Buscar cliente..." oninput="renderClientes()" style="max-width:240px;" />
+  </div>
+  <div id="lista-clientes"></div>
+</div>
+
+<!-- ══ RENTABILIDAD ══ -->
+<div class="section" id="sec-rentabilidad">
+  <div class="page-header">
+    <div class="page-header-left"><div class="page-title">Rentabilidad</div><div class="page-sub">Facturación vs costos mes a mes</div></div>
+  </div>
+  <div class="tc-banner">
+    <i class="ti ti-currency-dollar"></i>
+    <span>Tipo de cambio USD →</span>
+    <label>1 USD =</label>
+    <input type="number" id="tc-usd" placeholder="1400" min="1" step="1" onchange="guardarTC(); renderRentabilidad();" />
+    <label>ARS</label>
+    <span style="margin-left:4px;opacity:0.7;font-size:12px;">· Actualizado hoy para normalizar todas las monedas</span>
+  </div>
+  <div class="metrics" id="rent-metrics"></div>
+  <div class="card">
+    <div class="card-title" style="margin-bottom:8px;">Facturación mensual</div>
+    <div class="chart-legend">
+      <div class="chart-legend-item"><div class="chart-legend-dot" style="background:#1d9e75"></div> Facturado</div>
+      <div class="chart-legend-item"><div class="chart-legend-dot" style="background:#e8734a"></div> Costo materiales</div>
+      <div class="chart-legend-item"><div class="chart-legend-dot" style="background:#534ab7"></div> Ganancia neta</div>
+    </div>
+    <div class="chart-wrap"><div class="chart" id="rent-chart"></div></div>
+  </div>
+  <div class="card">
+    <div class="card-title" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">Detalle mensual<button class="btn btn-sm" onclick="exportarCSVRentabilidad()"><i class="ti ti-table-export"></i> Exportar CSV</button></div>
+    <div id="rent-tabla"></div>
+  </div>
+</div>
+
+<!-- ══ CATÁLOGO ══ -->
+<div class="section" id="sec-catalogo">
+  <div class="page-header">
+    <div class="page-header-left"><div class="page-title">Catálogo de productos</div><div class="page-sub">Productos tipo con parámetros fijos — cargalos al cotizador con un clic</div></div>
+    <button class="btn btn-primary" onclick="abrirModalCatalogo()"><i class="ti ti-plus"></i> Nuevo producto</button>
+  </div>
+  <div class="filter-bar">
+    <input type="text" id="cat-buscar" placeholder="Buscar..." oninput="renderCatalogo()" style="max-width:220px;" />
+  </div>
+  <div id="catalogo-grid" class="catalogo-grid"></div>
+</div>
+
+</main>
+</div>
+
+<!-- ══ MODAL PEDIDO ══ -->
+<div class="modal-bg" id="modal-pedido">
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <div class="modal-title" id="modal-pedido-title">Nuevo pedido</div>
+      <button class="modal-close" onclick="cerrarModal('modal-pedido')"><i class="ti ti-x"></i></button>
+    </div>
+    <input type="hidden" id="mp-id" />
+    <div class="form-row cols-2">
+      <div class="field"><label>Producto</label><input type="text" id="mp-nombre" placeholder="Nombre del producto" /></div>
+      <div class="field"><label>Cliente</label><input type="text" id="mp-cliente" placeholder="Nombre del cliente" /></div>
+    </div>
+    <div class="form-row cols-2">
+      <div class="field"><label>Cantidad</label><input type="number" id="mp-cantidad" value="1" min="1" /></div>
+      <div class="field"><label>Fecha prometida</label><input type="date" id="mp-fecha" /></div>
+    </div>
+    <div class="form-row">
+      <div class="field"><label>Cotización vinculada (opcional)</label>
+        <select id="mp-cotizacion"><option value="">— Sin cotización —</option></select>
+      </div>
+    </div>
+    <div id="mp-insumos-info" style="display:none" class="stock-alert" style="margin-bottom:8px;">
+      <i class="ti ti-package"></i>
+      <div id="mp-insumos-info-txt"></div>
+    </div>
+    <div class="form-row cols-3">
+      <div class="field"><label>Precio acordado</label><input type="number" id="mp-precio" placeholder="0" min="0" step="0.01" /></div>
+      <div class="field"><label>Moneda</label><select id="mp-moneda"><option value="ARS">ARS</option><option value="USD">USD</option><option value="EUR">EUR</option></select></div>
+      <div class="field"><label>Estado</label>
+        <select id="mp-estado" onchange="toggleEntregaSection()">
+          <option value="pendiente">Pendiente</option><option value="en_proceso">En proceso</option>
+          <option value="entregado">Entregado</option><option value="cancelado">Cancelado</option>
+        </select>
+      </div>
+    </div>
+    <div id="mp-entrega-section" style="display:none">
+      <hr />
+      <div class="form-row cols-3">
+        <div class="field"><label>Precio cobrado</label><input type="number" id="mp-cobrado" placeholder="0" min="0" step="0.01" /></div>
+        <div class="field"><label>Moneda cobrada</label><select id="mp-moneda-cobro"><option value="ARS">ARS</option><option value="USD">USD</option><option value="EUR">EUR</option></select></div>
+        <div class="field"><label>Medio de pago</label>
+          <select id="mp-medio">
+            <option value="efectivo">Efectivo</option><option value="transferencia">Transferencia</option>
+            <option value="mercadopago">MercadoPago</option><option value="tarjeta">Tarjeta</option>
+            <option value="crypto">Cripto</option><option value="otro">Otro</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row cols-2">
+        <div class="field"><label>Fecha de entrega</label><input type="date" id="mp-fecha-entrega" /></div>
+        <div class="field" style="justify-content:flex-end;padding-top:18px;">
+          <div id="mp-descuento-info" style="font-size:12px;color:var(--accent-dark);"></div>
+        </div>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="field"><label>Notas</label><textarea id="mp-notas" placeholder="Especificaciones, observaciones..."></textarea></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="guardarPedido()"><i class="ti ti-device-floppy"></i> Guardar</button>
+      <button class="btn" onclick="cerrarModal('modal-pedido')">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL MATERIAL ══ -->
+<div class="modal-bg" id="modal-material">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="modal-mat-title">Nuevo material / insumo</div>
+      <button class="modal-close" onclick="cerrarModal('modal-material')"><i class="ti ti-x"></i></button>
+    </div>
+    <input type="hidden" id="mm-id" />
+    <div class="form-row cols-2">
+      <div class="field"><label>Nombre</label><input type="text" id="mm-nombre" placeholder="Ej: PLA Blanco 1kg" /></div>
+      <div class="field"><label>Tipo</label>
+        <select id="mm-tipo">
+          <option value="filamento">Filamento</option><option value="resina">Resina</option><option value="insumo">Insumo general</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row cols-3">
+      <div class="field"><label>Stock actual</label><input type="number" id="mm-stock" placeholder="0" min="0" step="0.01" /></div>
+      <div class="field"><label>Unidad</label>
+        <select id="mm-unidad">
+          <option value="g">Gramos (g)</option><option value="kg">Kg</option><option value="ml">ml</option><option value="u">Unidades (u)</option>
+        </select>
+      </div>
+      <div class="field"><label>Stock mínimo (alerta)</label><input type="number" id="mm-minimo" placeholder="0" min="0" step="0.01" /></div>
+    </div>
+    <div class="form-row cols-3">
+      <div class="field"><label>Costo por unidad</label><input type="number" id="mm-costo" placeholder="0" min="0" step="0.01" /></div>
+      <div class="field"><label>Moneda</label><select id="mm-moneda"><option value="ARS">ARS</option><option value="USD">USD</option><option value="EUR">EUR</option></select></div>
+      <div class="field"><label>Proveedor</label><input type="text" id="mm-proveedor" placeholder="Nombre del proveedor" /></div>
+    </div>
+    <div class="form-row">
+      <div class="field"><label>Notas (color, marca, etc.)</label><input type="text" id="mm-notas" placeholder="Color, marca, características..." /></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="guardarMaterial()"><i class="ti ti-device-floppy"></i> Guardar</button>
+      <button class="btn" onclick="cerrarModal('modal-material')">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL REPOSICION ══ -->
+<div class="modal-bg" id="modal-reposicion">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Registrar compra / reposición</div>
+      <button class="modal-close" onclick="cerrarModal('modal-reposicion')"><i class="ti ti-x"></i></button>
+    </div>
+    <div class="form-row cols-2">
+      <div class="field"><label>Material</label><select id="rep-mat-id"><option value="">— Seleccioná —</option></select></div>
+      <div class="field"><label>Cantidad comprada</label><input type="number" id="rep-cantidad" placeholder="0" min="0" step="0.01" /></div>
+    </div>
+    <div class="form-row cols-2">
+      <div class="field"><label>Costo total pagado</label><input type="number" id="rep-costo" placeholder="0" min="0" step="0.01" /></div>
+      <div class="field"><label>Proveedor</label><input type="text" id="rep-proveedor" placeholder="Dónde compraste" /></div>
+    </div>
+    <div class="form-row"><div class="field"><label>Notas</label><input type="text" id="rep-notas" placeholder="Nro. de factura, observaciones..." /></div></div>
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="guardarReposicion()"><i class="ti ti-plus"></i> Registrar ingreso</button>
+      <button class="btn" onclick="cerrarModal('modal-reposicion')">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══ MODAL CLIENTE ══ -->
+<div class="modal-bg" id="modal-cliente">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="modal-cli-title">Nuevo cliente</div>
+      <button class="modal-close" onclick="cerrarModal('modal-cliente')"><i class="ti ti-x"></i></button>
+    </div>
+    <input type="hidden" id="mc-id" />
+    <div class="form-row cols-2">
+      <div class="field"><label>Nombre</label><input type="text" id="mc-nombre" placeholder="Nombre completo o empresa" /></div>
+      <div class="field"><label>Email</label><input type="email" id="mc-email" placeholder="cliente@email.com" /></div>
+    </div>
+    <div class="form-row cols-2">
+      <div class="field"><label>Teléfono / WhatsApp</label><input type="text" id="mc-tel" placeholder="+54 9 11 ..." /></div>
+      <div class="field"><label>Instagram</label><input type="text" id="mc-ig" placeholder="@usuario" /></div>
+    </div>
+    <div class="form-row cols-2">
+      <div class="field"><label>Tipo</label>
+        <select id="mc-tipo">
+          <option value="particular">Particular (B2C)</option>
+          <option value="empresa">Empresa (B2B)</option>
+          <option value="revendedor">Revendedor</option>
+        </select>
+      </div>
+      <div class="field"><label>Ciudad / Provincia</label><input type="text" id="mc-ciudad" placeholder="Buenos Aires" /></div>
+    </div>
+    <div class="form-row"><div class="field"><label>Notas</label><textarea id="mc-notas" placeholder="Preferencias, descuentos acordados, referencias..."></textarea></div></div>
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="guardarCliente()"><i class="ti ti-device-floppy"></i> Guardar</button>
+      <button class="btn" onclick="cerrarModal('modal-cliente')">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL DETALLE CLIENTE ══ -->
+<div class="modal-bg" id="modal-cli-detalle">
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <div class="modal-title" id="modal-cli-det-title">Detalle cliente</div>
+      <button class="modal-close" onclick="cerrarModal('modal-cli-detalle')"><i class="ti ti-x"></i></button>
+    </div>
+    <div id="modal-cli-det-body"></div>
+  </div>
+</div>
+
+<!-- ══ MODAL CATÁLOGO ══ -->
+<div class="modal-bg" id="modal-catalogo">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="modal-cat-title">Nuevo producto tipo</div>
+      <button class="modal-close" onclick="cerrarModal('modal-catalogo')"><i class="ti ti-x"></i></button>
+    </div>
+    <input type="hidden" id="mcat-id" />
+    <div class="form-row cols-2">
+      <div class="field"><label>Nombre del producto</label><input type="text" id="mcat-nombre" placeholder="Maceta hexagonal 15cm" /></div>
+      <div class="field"><label>Categoría</label><input type="text" id="mcat-categoria" placeholder="Decoración, Industrial, etc." /></div>
+    </div>
+    <div class="form-row cols-3">
+      <div class="field"><label>Gramos filamento</label><input type="number" id="mcat-gramos" placeholder="0" min="0" step="1" /></div>
+      <div class="field"><label>Costo por kg</label><input type="number" id="mcat-costo-kg" placeholder="0" min="0" step="0.01" /></div>
+      <div class="field"><label>Horas impresión</label><input type="number" id="mcat-horas" placeholder="0" min="0" step="0.5" /></div>
+    </div>
+    <div class="form-row cols-3">
+      <div class="field"><label>Costo hora máquina</label><input type="number" id="mcat-costo-hora" placeholder="0" min="0" step="0.01" /></div>
+      <div class="field"><label>Horas diseño/prep</label><input type="number" id="mcat-horas-diseno" placeholder="0" min="0" step="0.25" /></div>
+      <div class="field"><label>Costo hora diseño</label><input type="number" id="mcat-costo-diseno" placeholder="0" min="0" step="0.01" /></div>
+    </div>
+    <div class="form-row cols-3">
+      <div class="field"><label>Post-proceso</label><input type="number" id="mcat-post" placeholder="0" min="0" step="0.01" /></div>
+      <div class="field"><label>Insumos extra</label><input type="number" id="mcat-insumos" placeholder="0" min="0" step="0.01" /></div>
+      <div class="field"><label>Margen (%)</label><input type="number" id="mcat-margen" placeholder="40" min="0" /></div>
+    </div>
+    <div class="form-row cols-2">
+      <div class="field"><label>Moneda</label>
+        <select id="mcat-moneda"><option value="ARS">ARS</option><option value="USD">USD</option><option value="EUR">EUR</option></select>
+      </div>
+      <div class="field"><label>Descripción breve</label><input type="text" id="mcat-desc" placeholder="Para el PDF del cliente" /></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="guardarCatalogo()"><i class="ti ti-device-floppy"></i> Guardar</button>
+      <button class="btn" onclick="cerrarModal('modal-catalogo')">Cancelar</button>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+// STORAGE
+// ═══════════════════════════════════════════════════════
+const DB = {
+  get: k => JSON.parse(localStorage.getItem('rl3d_'+k)||'null'),
+  set: (k,v) => localStorage.setItem('rl3d_'+k, JSON.stringify(v)),
+};
+const getConfig     = () => DB.get('config') || {kgPla:0,kgPetg:0,kgAbs:0,hora:0,horaDiseno:0,margen:40,moneda:'ARS',negocio:'ADNlab',email:'',tel:'',ig:'',web:'',ciudad:'',pie:'Gracias por elegirnos'};
+const getPedidos    = () => DB.get('pedidos') || [];
+const getCots       = () => DB.get('cotizaciones') || [];
+const getMateriales = () => DB.get('materiales') || [];
+const getMovimientos= () => DB.get('movimientos') || [];
+const uid           = () => Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+
+// ═══════════════════════════════════════════════════════
+// STOCK RESERVADO — materiales comprometidos en pedidos activos
+// ═══════════════════════════════════════════════════════
+function getStockReservado() {
+  const res = {};
+  getPedidos()
+    .filter(p => p.estado !== 'entregado' && p.estado !== 'cancelado')
+    .forEach(p => {
+      // Filamento principal
+      if (p.filMatId && p.gramosPorUnidad) {
+        const cant = p.gramosPorUnidad * (p.cantidad||1);
+        res[p.filMatId] = (res[p.filMatId]||0) + cant;
+      }
+      // Insumos vinculados
+      (p.insumosVinculados||[]).forEach(iv => {
+        const cant = iv.cantPorUnidad * (p.cantidad||1);
+        res[iv.materialId] = (res[iv.materialId]||0) + cant;
+      });
+    });
+  return res;
+}
+
+function getStockDisponible(matId, excluirPedidoId) {
+  const mat = getMateriales().find(m => m.id === matId);
+  if (!mat) return 0;
+  const res = {};
+  getPedidos()
+    .filter(p => p.estado !== 'entregado' && p.estado !== 'cancelado' && p.id !== excluirPedidoId)
+    .forEach(p => {
+      if (p.filMatId && p.gramosPorUnidad) {
+        const c = p.gramosPorUnidad * (p.cantidad||1);
+        res[p.filMatId] = (res[p.filMatId]||0) + c;
+      }
+      (p.insumosVinculados||[]).forEach(iv => {
+        const c = iv.cantPorUnidad * (p.cantidad||1);
+        res[iv.materialId] = (res[iv.materialId]||0) + c;
+      });
+    });
+  return Math.max(0, mat.stock - (res[matId]||0));
+}
+
+// ═══════════════════════════════════════════════════════
+// UTILS
+// ═══════════════════════════════════════════════════════
+function toast(msg, dur=2800) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), dur);
+}
+function fmt(n, mon) {
+  const sym = {ARS:'$',USD:'USD ',EUR:'€'};
+  return (sym[mon]||'')+parseFloat(n||0).toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2});
+}
+function fmtFecha(str) {
+  if (!str) return '—';
+  const d = str.includes('T') ? new Date(str) : new Date(str+'T12:00:00');
+  return isNaN(d) ? str : d.toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'2-digit'});
+}
+function fmtFechaLarga(str) {
+  if (!str) return '';
+  const d = new Date(str.includes('T')?str:str+'T12:00:00');
+  return d.toLocaleDateString('es-AR',{day:'2-digit',month:'long',year:'numeric'});
+}
+function badgeEstado(e) {
+  const m = {pendiente:['badge-pending','Pendiente'],en_proceso:['badge-progress','En proceso'],entregado:['badge-delivered','Entregado'],cancelado:['badge-cancelled','Cancelado']};
+  const [c,l] = m[e]||['badge-cancelled',e];
+  return `<span class="badge ${c}">${l}</span>`;
+}
+const medioLabel = {efectivo:'Efectivo',transferencia:'Transferencia',mercadopago:'MercadoPago',tarjeta:'Tarjeta',crypto:'Cripto',otro:'Otro'};
+
+// ═══════════════════════════════════════════════════════
+// NAVIGATION
+// ═══════════════════════════════════════════════════════
+function showSection(name) {
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('sec-'+name).classList.add('active');
+  const nav = document.querySelector(`.nav-item[onclick*="'${name}'"]`);
+  if (nav) nav.classList.add('active');
+  if (name==='dashboard')   renderDashboard();
+  if (name==='pedidos')     renderPedidos();
+  if (name==='historial')   renderHistorial();
+  if (name==='cotizador')   { renderCotizacionesGuardadas(); poblarSelectoresFilamento(); }
+  if (name==='materiales')  { renderMateriales(); renderMovimientos(); poblarSelectMateriales(); }
+  if (name==='clientes')    renderClientes();
+  if (name==='rentabilidad') renderRentabilidad();
+  if (name==='catalogo')    renderCatalogo();
+  if (name==='config')      cargarConfig();
+}
+
+// ═══════════════════════════════════════════════════════
+// COTIZADOR — selectors de filamento
+// ═══════════════════════════════════════════════════════
+function poblarSelectoresFilamento() {
+  const sel = document.getElementById('q-stock-fil-id');
+  if (!sel) return;
+  const prev = sel.value;
+  sel.innerHTML = '<option value="">— Seleccioná material —</option>';
+  getMateriales().filter(m=>m.tipo==='filamento'||m.tipo==='resina').forEach(m=>{
+    const disp = getStockDisponible(m.id);
+    const o = document.createElement('option');
+    o.value = m.id;
+    o.textContent = `${m.nombre} (disp: ${disp} ${m.unidad})`;
+    sel.appendChild(o);
+  });
+  if (prev) sel.value = prev;
+}
+
+function toggleFilStock() {
+  const usar = document.getElementById('q-usar-stock-fil').checked;
+  document.getElementById('q-fil-libre').style.display  = usar ? 'none'  : 'block';
+  document.getElementById('q-fil-stock').style.display  = usar ? 'block' : 'none';
+  if (usar) poblarSelectoresFilamento();
+  calcCotizacion();
+}
+
+function onFilStockChange() {
+  const matId = document.getElementById('q-stock-fil-id').value;
+  const hint  = document.getElementById('q-fil-stock-hint');
+  if (!matId) { hint.textContent=''; return; }
+  const mat  = getMateriales().find(m=>m.id===matId);
+  const disp = getStockDisponible(matId);
+  if (mat) hint.textContent = `Stock total: ${mat.stock} ${mat.unidad} · Disponible (sin reservas): ${disp} ${mat.unidad}`;
+  calcCotizacion();
+}
+
+// ═══════════════════════════════════════════════════════
+// COTIZADOR — insumos dinámicos
+// ═══════════════════════════════════════════════════════
+let filaInsumoCount = 0;
+
+function agregarFilaInsumo(prefill) {
+  const lista = document.getElementById('q-insumos-lista');
+  const rowId = 'ins-'+(++filaInsumoCount);
+  const mats  = getMateriales();
+  const opts  = mats.map(m=>{
+    const disp = getStockDisponible(m.id);
+    return `<option value="${m.id}" ${prefill&&prefill.materialId===m.id?'selected':''}>${m.nombre} (${disp} ${m.unidad} disp.)</option>`;
+  }).join('');
+
+  const div = document.createElement('div');
+  div.className = 'insumo-row';
+  div.id = rowId;
+  div.innerHTML = `
+    <div>
+      <select class="ins-mat" onchange="onInsumoChange('${rowId}')" style="width:100%">
+        <option value="">— Material / insumo —</option>${opts}
+      </select>
+      <div class="stock-hint ins-hint" id="${rowId}-hint"></div>
+    </div>
+    <input type="number" class="ins-cant" placeholder="Cant./unidad" min="0" step="0.01" oninput="calcCotizacion()" title="Cantidad por unidad de producto" />
+    <div class="text-sm text-muted ins-cost" id="${rowId}-cost" style="text-align:right;padding:4px 0;min-width:70px;"></div>
+    <button class="btn btn-sm btn-danger" onclick="quitarFilaInsumo('${rowId}')"><i class="ti ti-x"></i></button>
+  `;
+  lista.appendChild(div);
+  if (prefill) {
+    div.querySelector('.ins-mat').value  = prefill.materialId;
+    div.querySelector('.ins-cant').value = prefill.cantPorUnidad;
+    onInsumoChange(rowId);
+  }
+  calcCotizacion();
+}
+
+function quitarFilaInsumo(rowId) {
+  const el = document.getElementById(rowId);
+  if (el) el.remove();
+  calcCotizacion();
+}
+
+function onInsumoChange(rowId) {
+  const row   = document.getElementById(rowId); if (!row) return;
+  const matId = row.querySelector('.ins-mat').value;
+  const hint  = row.querySelector('.ins-hint');
+  if (!matId) { hint.textContent=''; return; }
+  const mat  = getMateriales().find(m=>m.id===matId);
+  const disp = getStockDisponible(matId);
+  if (mat) hint.textContent = `Stock: ${mat.stock} ${mat.unidad} · Disponible: ${disp} ${mat.unidad} · Costo: ${fmt(mat.costo||0, mat.moneda||'ARS')}/${mat.unidad}`;
+  calcCotizacion();
+}
+
+function getInsumosActuales() {
+  const rows = document.querySelectorAll('#q-insumos-lista .insumo-row');
+  const result = [];
+  rows.forEach(row=>{
+    const matId = row.querySelector('.ins-mat').value;
+    const cant  = parseFloat(row.querySelector('.ins-cant').value)||0;
+    if (!matId || cant<=0) return;
+    const mat = getMateriales().find(m=>m.id===matId);
+    if (!mat) return;
+    result.push({
+      materialId: matId, cantPorUnidad: cant,
+      nombre: mat.nombre, costo: mat.costo||0,
+      moneda: mat.moneda||'ARS', unidad: mat.unidad,
+      dispStock: getStockDisponible(matId),
+    });
+  });
+  return result;
+}
+
+// ═══════════════════════════════════════════════════════
+// COTIZADOR — cálculo principal
+// ═══════════════════════════════════════════════════════
+function calcCotizacion() {
+  const g   = id => parseFloat(document.getElementById(id)?.value)||0;
+  const mon = document.getElementById('q-moneda').value;
+  const usarStock = document.getElementById('q-usar-stock-fil').checked;
+  const uds = Math.max(1, usarStock ? g('q-unidades-stock') : g('q-unidades'));
+
+  // — Filamento —
+  let matCost=0, gramosPorUnidad=0, gramosTotal=0;
+  if (usarStock) {
+    const matId = document.getElementById('q-stock-fil-id').value;
+    gramosPorUnidad = g('q-gramos-stock');
+    gramosTotal = gramosPorUnidad * uds;
+    if (matId && gramosPorUnidad>0) {
+      const mat = getMateriales().find(m=>m.id===matId);
+      if (mat) {
+        const costoG = (mat.costo||0) / (mat.unidad==='kg' ? 1000 : 1);
+        matCost = costoG * gramosPorUnidad;
+      }
+    }
+  } else {
+    const gr = g('q-gramos'); const ck = g('q-costo-kg');
+    gramosPorUnidad = gr; gramosTotal = gr;
+    matCost = (gr/1000)*ck;
+  }
+
+  // — Tiempo —
+  const imp = g('q-horas') * g('q-costo-hora');
+  const dis = g('q-horas-diseno') * g('q-costo-diseno');
+
+  // — Insumos vinculados —
+  const insumos = getInsumosActuales();
+  let insumoCostTotal = 0;
+  insumos.forEach(ins=>{
+    const cU = ins.costo * ins.cantPorUnidad;
+    insumoCostTotal += cU;
+    // Mostrar costo en la fila
+    const row = [...document.querySelectorAll('#q-insumos-lista .insumo-row')]
+      .find(r=>r.querySelector('.ins-mat').value===ins.materialId);
+    if (row) {
+      const cel = document.getElementById(row.id+'-cost');
+      if (cel) cel.textContent = fmt(cU, ins.moneda)+'/u';
+    }
+  });
+
+  // — Otros —
+  const post    = g('q-postproceso');
+  const insExtra= g('q-insumos-extra');
+  const env     = g('q-envio');
+  const margen  = g('q-margen');
+  const iva     = g('q-iva');
+
+  const costoU = matCost + imp + dis + insumoCostTotal + post + insExtra + env;
+  const conM   = costoU * (1 + margen/100);
+  const final  = conM  * (1 + iva/100);
+
+  document.getElementById('q-result').style.display = 'block';
+  document.getElementById('q-precio-final').textContent = fmt(final, mon);
+  document.getElementById('q-breakdown').innerHTML = `
+    <div class="result-item"><div class="ri-label">Material</div><div class="ri-val">${fmt(matCost,mon)}</div></div>
+    <div class="result-item"><div class="ri-label">Impresión</div><div class="ri-val">${fmt(imp,mon)}</div></div>
+    <div class="result-item"><div class="ri-label">Diseño/prep</div><div class="ri-val">${fmt(dis,mon)}</div></div>
+    <div class="result-item"><div class="ri-label">Insumos stock</div><div class="ri-val">${fmt(insumoCostTotal,mon)}</div></div>
+    <div class="result-item"><div class="ri-label">Post-proceso</div><div class="ri-val">${fmt(post,mon)}</div></div>
+    <div class="result-item"><div class="ri-label">Costo unitario</div><div class="ri-val">${fmt(costoU,mon)}</div></div>
+  `;
+
+  // Subtotal insumos
+  const subEl = document.getElementById('q-insumos-subtotal');
+  if (subEl) subEl.textContent = insumos.length>0
+    ? `Subtotal insumos (${insumos.length} ítem${insumos.length>1?'s':''}): ${fmt(insumoCostTotal,mon)} por unidad`
+    : '';
+
+  // Alertas de stock
+  const warns = [];
+  if (usarStock) {
+    const matId = document.getElementById('q-stock-fil-id').value;
+    const gr    = gramosPorUnidad;
+    if (matId && gr>0) {
+      const disp = getStockDisponible(matId);
+      const mat  = getMateriales().find(m=>m.id===matId);
+      const nec  = gr * uds;
+      if (nec > disp) {
+        warns.push(`<div class="stock-alert"><i class="ti ti-alert-triangle"></i><div><strong>${mat?.nombre||'Filamento'}:</strong> necesitás <strong>${nec} ${mat?.unidad||'g'}</strong> para ${uds} unidad${uds>1?'es':''}, disponible <strong>${disp} ${mat?.unidad||'g'}</strong>. Podés cotizar igual — reponelo antes de producir.</div></div>`);
+      }
+    }
+  }
+  insumos.forEach(ins=>{
+    const nec = ins.cantPorUnidad * uds;
+    if (nec > ins.dispStock) {
+      warns.push(`<div class="stock-alert"><i class="ti ti-alert-triangle"></i><div><strong>${ins.nombre}:</strong> necesitás <strong>${nec} ${ins.unidad}</strong>, disponible <strong>${ins.dispStock} ${ins.unidad}</strong>. Podés cotizar igual — reponelo antes de producir.</div></div>`);
+    }
+  });
+  const wEl = document.getElementById('q-stock-warnings');
+  if (wEl) wEl.innerHTML = warns.join('');
+
+  window._lastCalc = {
+    matCost, imp, dis, insumoCostTotal, post, insExtra, env,
+    costoU, conM, final, mon, margen, iva, uds,
+    gramos: gramosTotal, gramosPorUnidad,
+    horas: g('q-horas'), horasD: g('q-horas-diseno'),
+    insumos, usarStock,
+    filMatId: usarStock ? document.getElementById('q-stock-fil-id').value : null,
+  };
+}
+
+// ═══════════════════════════════════════════════════════
+// COTIZADOR — guardar / cargar / limpiar
+// ═══════════════════════════════════════════════════════
+function guardarCotizacion() {
+  const nombre = document.getElementById('q-nombre').value.trim();
+  if (!nombre) { toast('Completá el nombre del producto'); return; }
+  if (!window._lastCalc) { toast('Calculá primero'); return; }
+  const c = window._lastCalc;
+  const cot = {
+    id: uid(), fecha: new Date().toISOString(), nombre,
+    cliente:      document.getElementById('q-cliente').value,
+    clienteEmail: document.getElementById('q-cliente-email').value,
+    descripcion:  document.getElementById('q-descripcion').value,
+    validez:      parseInt(document.getElementById('q-validez').value)||7,
+    moneda: c.mon, precioUnitario: c.final, costoUnitario: c.costoU,
+    margen: c.margen, iva: c.iva, unidades: c.uds,
+    matCost: c.matCost, imp: c.imp, dis: c.dis,
+    insumoCostTotal: c.insumoCostTotal,
+    post: c.post, insExtra: c.insExtra, env: c.env,
+    gramos: c.gramos, gramosPorUnidad: c.gramosPorUnidad,
+    horas: c.horas, horasDiseno: c.horasD,
+    usarStock: c.usarStock, filMatId: c.filMatId,
+    insumosVinculados: c.insumos,
+    // legado
+    costoKg: parseFloat(document.getElementById('q-costo-kg')?.value)||0,
+    costoHora: parseFloat(document.getElementById('q-costo-hora')?.value)||0,
+    costoDiseno: parseFloat(document.getElementById('q-costo-diseno')?.value)||0,
+    postproceso: c.post, insumos: c.insExtra, envio: c.env,
+  };
+  const cots = getCots(); cots.unshift(cot); DB.set('cotizaciones', cots);
+  toast('Cotización guardada ✓');
+  renderCotizacionesGuardadas();
+}
+
+function renderCotizacionesGuardadas() {
+  const cots = getCots();
+  const el = document.getElementById('q-cotizaciones-guardadas');
+  if (!cots.length) { el.innerHTML=''; return; }
+  el.innerHTML = `<div class="card"><div class="card-title">Cotizaciones guardadas</div><div class="table-wrap"><table>
+    <thead><tr><th>Fecha</th><th>Producto</th><th>Cliente</th><th>Uds</th><th>Precio/u</th><th>Insumos</th><th>Margen</th><th></th></tr></thead>
+    <tbody>${cots.map(c=>{
+      const nIns = (c.insumosVinculados||[]).length + (c.filMatId?1:0);
+      return `<tr>
+        <td class="text-muted text-sm">${fmtFecha(c.fecha)}</td>
+        <td><strong>${c.nombre}</strong></td>
+        <td>${c.cliente||'—'}</td>
+        <td>${c.unidades}</td>
+        <td><strong>${fmt(c.precioUnitario,c.moneda)}</strong></td>
+        <td>${nIns>0?`<span class="reserved-badge"><i class="ti ti-package" style="font-size:10px"></i> ${nIns} ítem${nIns>1?'s':''}</span>`:'<span class="text-muted text-sm">—</span>'}</td>
+        <td><span class="tag">${c.margen}%</span></td>
+        <td><div class="flex-gap">
+          <button class="btn btn-sm" onclick="cargarCotizacion('${c.id}')" title="Cargar"><i class="ti ti-pencil"></i></button>
+          <button class="btn btn-sm" onclick="exportarPDFById('${c.id}')" title="PDF"><i class="ti ti-file-type-pdf"></i></button>
+          <button class="btn btn-sm btn-danger" onclick="borrarCotizacion('${c.id}')"><i class="ti ti-trash"></i></button>
+        </div></td>
+      </tr>`;
+    }).join('')}</tbody></table></div></div>`;
+}
+
+function cargarCotizacion(id) {
+  const c = getCots().find(x=>x.id===id); if (!c) return;
+  const s = (eid,v) => { const el=document.getElementById(eid); if(el) el.value=v??''; };
+  s('q-nombre',c.nombre); s('q-cliente',c.cliente||'');
+  s('q-cliente-email',c.clienteEmail||''); s('q-descripcion',c.descripcion||'');
+  s('q-validez',c.validez||7); s('q-margen',c.margen); s('q-iva',c.iva||0); s('q-moneda',c.moneda);
+
+  if (c.usarStock && c.filMatId) {
+    document.getElementById('q-usar-stock-fil').checked = true;
+    toggleFilStock();
+    setTimeout(()=>{
+      document.getElementById('q-stock-fil-id').value = c.filMatId;
+      s('q-gramos-stock', c.gramosPorUnidad||0);
+      s('q-unidades-stock', c.unidades);
+      onFilStockChange();
+    }, 50);
+  } else {
+    document.getElementById('q-usar-stock-fil').checked = false;
+    toggleFilStock();
+    s('q-gramos', c.gramosPorUnidad||c.gramos||0);
+    s('q-costo-kg', c.costoKg||0);
+    s('q-unidades', c.unidades);
+  }
+  s('q-horas',c.horas||0); s('q-costo-hora',c.costoHora||0);
+  s('q-horas-diseno',c.horasDiseno||0); s('q-costo-diseno',c.costoDiseno||0);
+  s('q-postproceso',c.post||c.postproceso||0);
+  s('q-insumos-extra',c.insExtra||c.insumos||0);
+  s('q-envio',c.env||c.envio||0);
+
+  document.getElementById('q-insumos-lista').innerHTML = '';
+  filaInsumoCount = 0;
+  (c.insumosVinculados||[]).forEach(ins=>agregarFilaInsumo(ins));
+  calcCotizacion();
+  window.scrollTo(0,0);
+}
+
+function borrarCotizacion(id) {
+  if (!confirm('¿Eliminar esta cotización?')) return;
+  DB.set('cotizaciones', getCots().filter(x=>x.id!==id));
+  renderCotizacionesGuardadas();
+  toast('Cotización eliminada');
+}
+
+function limpiarCotizador() {
+  ['q-nombre','q-cliente','q-cliente-email','q-descripcion','q-gramos','q-costo-kg',
+   'q-horas','q-costo-hora','q-horas-diseno','q-costo-diseno',
+   'q-postproceso','q-insumos-extra','q-envio','q-gramos-stock'].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.value='';
+  });
+  const cfg = getConfig();
+  document.getElementById('q-unidades').value = 1;
+  document.getElementById('q-unidades-stock').value = 1;
+  document.getElementById('q-margen').value = cfg.margen||40;
+  document.getElementById('q-iva').value = 0;
+  document.getElementById('q-validez').value = 7;
+  document.getElementById('q-usar-stock-fil').checked = false;
+  toggleFilStock();
+  document.getElementById('q-insumos-lista').innerHTML = '';
+  const warns = document.getElementById('q-stock-warnings');
+  if (warns) warns.innerHTML = '';
+  const subEl = document.getElementById('q-insumos-subtotal');
+  if (subEl) subEl.textContent = '';
+  document.getElementById('q-result').style.display = 'none';
+  window._lastCalc = null;
+}
+
+function crearPedidoDesdeCot() {
+  abrirModalPedido(null, {
+    nombre:     document.getElementById('q-nombre').value.trim(),
+    cliente:    document.getElementById('q-cliente').value,
+    moneda:     document.getElementById('q-moneda').value,
+    insumosVinculados: window._lastCalc?.insumos || [],
+    filMatId:   window._lastCalc?.filMatId,
+    gramosPorUnidad: window._lastCalc?.gramosPorUnidad,
+  });
+}
+
+// ═══════════════════════════════════════════════════════
+// PDF
+// ═══════════════════════════════════════════════════════
+function exportarPDFCotizacion() {
+  if (!window._lastCalc) { toast('Calculá primero'); return; }
+  const nombre = document.getElementById('q-nombre').value.trim();
+  if (!nombre) { toast('Completá el nombre'); return; }
+  const c = window._lastCalc;
+  generarPDF({
+    nombre, cliente: document.getElementById('q-cliente').value,
+    clienteEmail: document.getElementById('q-cliente-email').value,
+    descripcion:  document.getElementById('q-descripcion').value,
+    validez: parseInt(document.getElementById('q-validez').value)||7,
+    moneda: c.mon, precioUnitario: c.final, costoUnitario: c.costoU,
+    margen: c.margen, iva: c.iva, unidades: c.uds,
+    mat: c.matCost, imp: c.imp, dis: c.dis,
+    insumoCostTotal: c.insumoCostTotal, insumosVinculados: c.insumos,
+    post: c.post, ins: c.insExtra, env: c.env,
+    gramos: c.gramos, horas: c.horas, horasD: c.horasD,
+  });
+}
+
+function exportarPDFById(id) {
+  const c = getCots().find(x=>x.id===id); if (!c) return;
+  generarPDF({
+    nombre: c.nombre, cliente: c.cliente, clienteEmail: c.clienteEmail,
+    descripcion: c.descripcion, validez: c.validez,
+    moneda: c.moneda, precioUnitario: c.precioUnitario, costoUnitario: c.costoUnitario,
+    margen: c.margen, iva: c.iva||0, unidades: c.unidades,
+    mat: c.matCost||0, imp: c.imp||0, dis: c.dis||0,
+    insumoCostTotal: c.insumoCostTotal||0, insumosVinculados: c.insumosVinculados||[],
+    post: c.post||c.postproceso||0, ins: c.insExtra||c.insumos||0, env: c.env||c.envio||0,
+    gramos: c.gramos||0, horas: c.horas||0, horasD: c.horasDiseno||0,
+  });
+}
+
+function generarPDF(d) {
+  const cfg = getConfig();
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({unit:'mm',format:'a4'});
+  const W=210, H=297, mon=d.moneda;
+  const ahora = new Date();
+  const vence = new Date(ahora); vence.setDate(vence.getDate()+(d.validez||7));
+  const nCot  = 'COT-'+ahora.toISOString().replace(/[-:T.Z]/g,'').slice(0,14);
+  const negocio = cfg.negocio||'ADNlab';
+
+  doc.setFillColor(29,158,117); doc.rect(0,0,W,38,'F');
+  doc.setTextColor(255,255,255);
+  doc.setFontSize(22); doc.setFont('helvetica','bold'); doc.text(negocio,18,18);
+  doc.setFontSize(10); doc.setFont('helvetica','normal'); doc.text('COTIZACIÓN',18,26);
+  const infoR = [cfg.email,cfg.tel,cfg.ig,cfg.web].filter(Boolean);
+  doc.setFontSize(9);
+  infoR.forEach((l,i)=>doc.text(l,W-18,12+i*6,{align:'right'}));
+
+  doc.setFillColor(240,255,250); doc.rect(0,38,W,14,'F');
+  doc.setTextColor(15,110,86); doc.setFontSize(8.5); doc.setFont('helvetica','bold');
+  doc.text(nCot,18,46); doc.setFont('helvetica','normal');
+  doc.text(`Emitida: ${fmtFechaLarga(ahora.toISOString())}`,80,46);
+  doc.text(`Válida hasta: ${fmtFechaLarga(vence.toISOString())}`,145,46);
+
+  let y=62; doc.setTextColor(26,26,24);
+  doc.setFillColor(250,249,246); doc.roundedRect(14,y,85,32,2,2,'F');
+  doc.setFillColor(250,249,246); doc.roundedRect(111,y,85,32,2,2,'F');
+  doc.setFontSize(7.5); doc.setFont('helvetica','bold'); doc.setTextColor(100,100,95);
+  doc.text('CLIENTE',20,y+7);
+  doc.setFont('helvetica','normal'); doc.setTextColor(26,26,24);
+  doc.setFontSize(11); doc.setFont('helvetica','bold');
+  doc.text(d.cliente||'Cliente no especificado',20,y+15,{maxWidth:78});
+  doc.setFontSize(8.5); doc.setFont('helvetica','normal'); doc.setTextColor(90,90,87);
+  if (d.clienteEmail) doc.text(d.clienteEmail,20,y+22);
+  if (cfg.ciudad) doc.text(cfg.ciudad,20,y+28);
+  doc.setFontSize(7.5); doc.setFont('helvetica','bold'); doc.setTextColor(100,100,95);
+  doc.text('PRODUCTO',117,y+7);
+  doc.setFont('helvetica','normal'); doc.setTextColor(26,26,24);
+  doc.setFontSize(11); doc.setFont('helvetica','bold');
+  doc.text(d.nombre,117,y+15,{maxWidth:78});
+  doc.setFontSize(8.5); doc.setFont('helvetica','normal'); doc.setTextColor(90,90,87);
+  if (d.descripcion) { const ls=doc.splitTextToSize(d.descripcion,76); doc.text(ls[0],117,y+22); }
+
+  y+=42;
+  doc.setFontSize(8); doc.setFont('helvetica','bold'); doc.setTextColor(100,100,95);
+  doc.text('DESGLOSE DE COSTOS',18,y); y+=6;
+
+  const rows = [];
+  if ((d.mat||0)>0) rows.push(['Material/filamento', d.gramos?`${d.gramos}g`:'—', fmt(d.mat,mon)]);
+  if ((d.imp||0)>0) rows.push(['Tiempo de impresión', d.horas?`${d.horas}hs`:'—', fmt(d.imp,mon)]);
+  if ((d.dis||0)>0) rows.push(['Diseño y preparación', d.horasD?`${d.horasD}hs`:'—', fmt(d.dis,mon)]);
+  (d.insumosVinculados||[]).forEach(ins=>{
+    rows.push([ins.nombre, `${ins.cantPorUnidad} ${ins.unidad}/u`, fmt(ins.costo*ins.cantPorUnidad,ins.moneda)]);
+  });
+  if ((d.post||0)>0) rows.push(['Post-proceso','—',fmt(d.post,mon)]);
+  if ((d.ins||0)>0)  rows.push(['Insumos extras','—',fmt(d.ins,mon)]);
+  if ((d.env||0)>0)  rows.push(['Envío','—',fmt(d.env,mon)]);
+
+  doc.setFillColor(240,253,248); doc.rect(14,y-4,182,8,'F');
+  doc.setTextColor(15,110,86); doc.setFont('helvetica','bold'); doc.setFontSize(8);
+  doc.text('Concepto',18,y+0.5); doc.text('Detalle',115,y+0.5); doc.text('Importe',175,y+0.5,{align:'right'});
+  y+=8;
+  doc.setFont('helvetica','normal'); doc.setTextColor(26,26,24);
+  rows.forEach((r,i)=>{
+    if (i%2===0) { doc.setFillColor(250,250,248); doc.rect(14,y-3.5,182,7,'F'); }
+    doc.setFontSize(8.5);
+    doc.text(r[0],18,y+0.5); doc.text(r[1],115,y+0.5); doc.text(r[2],175,y+0.5,{align:'right'});
+    y+=7;
+  });
+
+  doc.setDrawColor(200,230,215); doc.setLineWidth(0.3); doc.line(14,y+2,196,y+2); y+=7;
+  const totalC=(d.mat||0)+(d.imp||0)+(d.dis||0)+(d.insumoCostTotal||0)+(d.post||0)+(d.ins||0)+(d.env||0);
+  const costoU=totalC/Math.max(1,d.unidades);
+  const conM=costoU*(1+d.margen/100);
+  const finalP=conM*(1+(d.iva||0)/100);
+
+  const tots=[['Costo unitario',fmt(costoU,mon)],[`Margen (${d.margen}%)`,'+'+fmt(costoU*d.margen/100,mon)]];
+  if (d.iva>0) tots.push([`IVA (${d.iva}%)`,'+'+fmt(conM*d.iva/100,mon)]);
+  doc.setFontSize(8.5); doc.setTextColor(90,90,87);
+  tots.forEach(([l,v])=>{ doc.text(l,120,y); doc.text(v,192,y,{align:'right'}); y+=7; });
+
+  doc.setFillColor(29,158,117); doc.roundedRect(110,y,86,16,2,2,'F');
+  doc.setTextColor(255,255,255); doc.setFont('helvetica','bold');
+  doc.setFontSize(8.5); doc.text('PRECIO FINAL POR UNIDAD',116,y+6);
+  doc.setFontSize(14); doc.text(fmt(finalP,mon),192,y+12,{align:'right'});
+  if (d.unidades>1) {
+    y+=20;
+    doc.setFillColor(240,253,248); doc.roundedRect(110,y,86,12,2,2,'F');
+    doc.setTextColor(15,110,86); doc.setFontSize(8.5); doc.setFont('helvetica','bold');
+    doc.text(`Total ${d.unidades} unidades`,116,y+5);
+    doc.setFontSize(11); doc.text(fmt(finalP*d.unidades,mon),192,y+9,{align:'right'});
+  }
+
+  doc.setFillColor(240,240,237); doc.rect(0,H-22,W,22,'F');
+  doc.setTextColor(130,130,125); doc.setFontSize(8); doc.setFont('helvetica','normal');
+  doc.text(cfg.pie||'Gracias por elegirnos',W/2,H-13,{align:'center'});
+  const cl=[cfg.email,cfg.tel,cfg.ig].filter(Boolean).join('  ·  ');
+  doc.text(cl,W/2,H-7,{align:'center'});
+  doc.save(`cotizacion-${(d.nombre||'producto').replace(/\s+/g,'-').toLowerCase()}-${ahora.toISOString().split('T')[0]}.pdf`);
+  toast('PDF generado ✓');
+}
+
+// ═══════════════════════════════════════════════════════
+// PEDIDOS
+// ═══════════════════════════════════════════════════════
+let filtroActual = 'todos';
+
+function renderPedidos() {
+  const todos = getPedidos();
+  const lista = (filtroActual==='todos' ? todos : todos.filter(p=>p.estado===filtroActual))
+    .sort((a,b)=>new Date(b.creado)-new Date(a.creado));
+  const el = document.getElementById('tabla-pedidos');
+  if (!lista.length) {
+    el.innerHTML='<div class="empty"><i class="ti ti-clipboard-list"></i><p>No hay pedidos en esta vista</p></div>'; return;
+  }
+  el.innerHTML=`<div class="table-wrap"><table>
+    <thead><tr><th>#</th><th>Producto</th><th>Cliente</th><th>Qty</th><th>Precio</th><th>Fecha prometida</th><th>Insumos</th><th>Estado</th><th></th></tr></thead>
+    <tbody>${lista.map((p,i)=>{
+      const nIns = (p.insumosVinculados||[]).length + (p.filMatId?1:0);
+      return `<tr>
+        <td class="text-muted text-sm">${String(i+1).padStart(3,'0')}</td>
+        <td><strong>${p.nombre}</strong>${p.notas?`<div class="text-sm text-muted mt-4">${p.notas.slice(0,50)}${p.notas.length>50?'…':''}</div>`:''}</td>
+        <td>${p.cliente||'—'}</td>
+        <td>${p.cantidad}</td>
+        <td>${p.precio?fmt(p.precio,p.moneda):'—'}</td>
+        <td class="text-sm">${fmtFecha(p.fechaPrometida)}</td>
+        <td>${nIns>0?`<span class="reserved-badge"><i class="ti ti-package" style="font-size:10px"></i> ${nIns}</span>`:'<span class="text-muted text-sm">—</span>'}</td>
+        <td>${badgeEstado(p.estado)}</td>
+        <td><div class="flex-gap">
+          <button class="btn btn-sm" onclick="editarPedido('${p.id}')"><i class="ti ti-pencil"></i></button>
+          ${p.estado!=='entregado'&&p.estado!=='cancelado'?`<button class="btn btn-sm" onclick="marcarEntregado('${p.id}')" title="Marcar entregado"><i class="ti ti-check"></i></button>`:''}
+          <button class="btn btn-sm btn-danger" onclick="borrarPedido('${p.id}')"><i class="ti ti-trash"></i></button>
+        </div></td>
+      </tr>`;
+    }).join('')}</tbody></table></div>`;
+}
+
+function filtrarPedidos(estado) {
+  filtroActual = estado;
+  document.querySelectorAll('[id^="filt-"]').forEach(b=>b.style.background='');
+  const btn = document.getElementById('filt-'+estado);
+  if (btn) btn.style.background='var(--surface2)';
+  renderPedidos();
+}
+
+function toggleEntregaSection() {
+  const v = document.getElementById('mp-estado').value==='entregado';
+  document.getElementById('mp-entrega-section').style.display = v?'block':'none';
+}
+
+function abrirModalPedido(id, prefill) {
+  document.getElementById('modal-pedido-title').textContent = id?'Editar pedido':'Nuevo pedido';
+  document.getElementById('mp-id').value = id||'';
+
+  // Poblar cotizaciones
+  const sel = document.getElementById('mp-cotizacion');
+  sel.innerHTML = '<option value="">— Sin cotización —</option>';
+  getCots().forEach(c=>{
+    const o = document.createElement('option');
+    o.value=c.id; o.textContent=`${c.nombre} — ${fmt(c.precioUnitario,c.moneda)}`;
+    sel.appendChild(o);
+  });
+
+  if (id) {
+    const p = getPedidos().find(x=>x.id===id); if (!p) return;
+    const s=(eid,v)=>{const el=document.getElementById(eid);if(el)el.value=v??'';};
+    s('mp-nombre',p.nombre); s('mp-cliente',p.cliente); s('mp-cantidad',p.cantidad);
+    s('mp-fecha',p.fechaPrometida||''); s('mp-cotizacion',p.cotizacionId||'');
+    s('mp-precio',p.precio||''); s('mp-moneda',p.moneda||'ARS');
+    s('mp-estado',p.estado); s('mp-notas',p.notas||'');
+    s('mp-cobrado',p.cobrado||''); s('mp-moneda-cobro',p.monedaCobro||'ARS');
+    s('mp-medio',p.medioPago||'efectivo'); s('mp-fecha-entrega',p.fechaEntrega||'');
+    // Mostrar info de insumos vinculados
+    mostrarInfoInsumosModal(p.insumosVinculados||[], p.filMatId, p.gramosPorUnidad, p.cantidad||1, id);
+  } else {
+    ['mp-nombre','mp-cliente','mp-precio','mp-notas','mp-cobrado','mp-fecha-entrega','mp-fecha'].forEach(eid=>{
+      const el=document.getElementById(eid); if(el) el.value='';
+    });
+    const cfg = getConfig();
+    document.getElementById('mp-cantidad').value=1;
+    document.getElementById('mp-estado').value='pendiente';
+    document.getElementById('mp-moneda').value=cfg.moneda||'ARS';
+    document.getElementById('mp-moneda-cobro').value=cfg.moneda||'ARS';
+    document.getElementById('mp-insumos-info').style.display='none';
+    if (prefill) {
+      if (prefill.nombre)   document.getElementById('mp-nombre').value=prefill.nombre;
+      if (prefill.cliente)  document.getElementById('mp-cliente').value=prefill.cliente;
+      if (prefill.moneda)   { document.getElementById('mp-moneda').value=prefill.moneda; document.getElementById('mp-moneda-cobro').value=prefill.moneda; }
+      if (prefill.insumosVinculados?.length || prefill.filMatId) {
+        mostrarInfoInsumosModal(prefill.insumosVinculados||[], prefill.filMatId, prefill.gramosPorUnidad, 1, null);
+      }
+    }
+  }
+
+  document.getElementById('mp-estado').onchange = toggleEntregaSection;
+  toggleEntregaSection();
+
+  // Al vincular cotización, cargar precio e insumos
+  sel.onchange = ()=>{
+    const cid = sel.value;
+    if (!cid) { document.getElementById('mp-insumos-info').style.display='none'; return; }
+    const c = getCots().find(x=>x.id===cid);
+    if (!c) return;
+    document.getElementById('mp-precio').value = c.precioUnitario.toFixed(2);
+    document.getElementById('mp-moneda').value = c.moneda;
+    if (!document.getElementById('mp-nombre').value) document.getElementById('mp-nombre').value=c.nombre;
+    const qty = parseInt(document.getElementById('mp-cantidad').value)||1;
+    mostrarInfoInsumosModal(c.insumosVinculados||[], c.filMatId, c.gramosPorUnidad, qty, id||null);
+  };
+
+  document.getElementById('modal-pedido').classList.add('open');
+}
+
+function mostrarInfoInsumosModal(insumos, filMatId, gramosPorUnidad, qty, excluirPedidoId) {
+  const infoEl  = document.getElementById('mp-insumos-info');
+  const infoTxt = document.getElementById('mp-insumos-info-txt');
+  const items = [];
+  if (filMatId && gramosPorUnidad) {
+    const mat  = getMateriales().find(m=>m.id===filMatId);
+    const disp = getStockDisponible(filMatId, excluirPedidoId);
+    const nec  = gramosPorUnidad * qty;
+    if (mat) items.push(`<strong>${mat.nombre}</strong>: reservar ${nec} ${mat.unidad} (disp: ${disp} ${mat.unidad})${nec>disp?' ⚠️ insuficiente':''}`);
+  }
+  insumos.forEach(ins=>{
+    const disp = getStockDisponible(ins.materialId, excluirPedidoId);
+    const nec  = ins.cantPorUnidad * qty;
+    items.push(`<strong>${ins.nombre}</strong>: ${nec} ${ins.unidad}/pedido (disp: ${disp} ${ins.unidad})${nec>disp?' ⚠️ insuficiente':''}`);
+  });
+  if (items.length>0) {
+    infoTxt.innerHTML = '<strong>Insumos que se reservarán:</strong><br>'+items.join('<br>');
+    infoEl.style.display='flex';
+  } else {
+    infoEl.style.display='none';
+  }
+}
+
+function cerrarModal(id) { document.getElementById(id).classList.remove('open'); }
+
+function guardarPedido() {
+  const nombre = document.getElementById('mp-nombre').value.trim();
+  if (!nombre) { toast('Completá el nombre del producto'); return; }
+  const id      = document.getElementById('mp-id').value;
+  const estado  = document.getElementById('mp-estado').value;
+  const prevPedido = id ? getPedidos().find(x=>x.id===id) : null;
+  const prevEstado = prevPedido?.estado;
+
+  // Obtener insumos de la cotización vinculada (si hay)
+  const cotId = document.getElementById('mp-cotizacion').value;
+  const cot   = cotId ? getCots().find(x=>x.id===cotId) : null;
+
+  const pedido = {
+    id: id||uid(),
+    creado: prevPedido?.creado || new Date().toISOString(),
+    nombre, cliente: document.getElementById('mp-cliente').value,
+    cantidad: parseInt(document.getElementById('mp-cantidad').value)||1,
+    fechaPrometida: document.getElementById('mp-fecha').value,
+    cotizacionId: cotId,
+    precio: parseFloat(document.getElementById('mp-precio').value)||null,
+    moneda: document.getElementById('mp-moneda').value,
+    estado,
+    notas: document.getElementById('mp-notas').value,
+    cobrado:    estado==='entregado' ? (parseFloat(document.getElementById('mp-cobrado').value)||null) : null,
+    monedaCobro:estado==='entregado' ? document.getElementById('mp-moneda-cobro').value : null,
+    medioPago:  estado==='entregado' ? document.getElementById('mp-medio').value : null,
+    fechaEntrega:estado==='entregado'? document.getElementById('mp-fecha-entrega').value : null,
+    // insumos vinculados desde la cotización
+    insumosVinculados: cot?.insumosVinculados || prevPedido?.insumosVinculados || [],
+    filMatId:      cot?.filMatId      || prevPedido?.filMatId      || null,
+    gramosPorUnidad: cot?.gramosPorUnidad || prevPedido?.gramosPorUnidad || null,
+    stockDescontado: prevPedido?.stockDescontado || false,
+  };
+
+  // ── Si se acaba de marcar como entregado y el stock no fue descontado aún ──
+  if (estado==='entregado' && prevEstado!=='entregado' && !pedido.stockDescontado) {
+    descontarStockPedido(pedido);
+    pedido.stockDescontado = true;
+  }
+
+  const pedidos = getPedidos();
+  const idx = pedidos.findIndex(x=>x.id===pedido.id);
+  if (idx>=0) pedidos[idx]=pedido; else pedidos.unshift(pedido);
+  DB.set('pedidos', pedidos);
+  // Auto-link cliente
+  const nomCli = pedido.cliente?.trim();
+  if (nomCli) {
+    const clis = getClientes();
+    if (!clis.find(c=>c.nombre.trim().toLowerCase()===nomCli.toLowerCase())) {
+      clis.push({ id:uid(), nombre:nomCli, email:'', tel:'', ig:'', tipo:'particular', ciudad:'', notas:'', creado:new Date().toISOString() });
+      DB.set('clientes', clis);
+    }
+  }
+  cerrarModal('modal-pedido');
+  renderPedidos();
+  toast('Pedido guardado ✓');
+}
+
+// ── Descuenta el stock real al entregar ──
+function descontarStockPedido(pedido) {
+  const mats = getMateriales();
+  const movs = getMovimientos();
+  const qty  = pedido.cantidad||1;
+  let cambios = [];
+
+  // Filamento principal
+  if (pedido.filMatId && pedido.gramosPorUnidad) {
+    const idx = mats.findIndex(m=>m.id===pedido.filMatId);
+    if (idx>=0) {
+      const cant = pedido.gramosPorUnidad * qty;
+      const stockAntes = mats[idx].stock;
+      mats[idx].stock  = Math.max(0, parseFloat((mats[idx].stock - cant).toFixed(4)));
+      movs.unshift({id:uid(), fecha:new Date().toISOString(), materialId:pedido.filMatId, tipo:'salida',
+        cantidad:cant, stockPost:mats[idx].stock,
+        motivo:`Entrega pedido: ${pedido.nombre} (${pedido.cliente||'—'}) × ${qty}`});
+      cambios.push(`${mats[idx].nombre}: -${cant} ${mats[idx].unidad}`);
+    }
+  }
+
+  // Insumos vinculados
+  (pedido.insumosVinculados||[]).forEach(ins=>{
+    const idx = mats.findIndex(m=>m.id===ins.materialId);
+    if (idx>=0) {
+      const cant = ins.cantPorUnidad * qty;
+      mats[idx].stock = Math.max(0, parseFloat((mats[idx].stock - cant).toFixed(4)));
+      movs.unshift({id:uid(), fecha:new Date().toISOString(), materialId:ins.materialId, tipo:'salida',
+        cantidad:cant, stockPost:mats[idx].stock,
+        motivo:`Entrega pedido: ${pedido.nombre} (${pedido.cliente||'—'}) × ${qty}`});
+      cambios.push(`${ins.nombre}: -${cant} ${ins.unidad}`);
+    }
+  });
+
+  if (cambios.length>0) {
+    DB.set('materiales', mats);
+    DB.set('movimientos', movs);
+    toast(`Stock descontado: ${cambios.join(', ')}`, 4000);
+  }
+}
+
+function editarPedido(id) { abrirModalPedido(id); }
+
+function marcarEntregado(id) {
+  abrirModalPedido(id);
+  setTimeout(()=>{
+    const el = document.getElementById('mp-estado');
+    if (el) { el.value='entregado'; toggleEntregaSection(); }
+    const fe = document.getElementById('mp-fecha-entrega');
+    if (fe && !fe.value) fe.value = new Date().toISOString().split('T')[0];
+  }, 60);
+}
+
+function borrarPedido(id) {
+  if (!confirm('¿Eliminar este pedido?')) return;
+  DB.set('pedidos', getPedidos().filter(x=>x.id!==id));
+  renderPedidos();
+  toast('Pedido eliminado');
+}
+
+// ═══════════════════════════════════════════════════════
+// HISTORIAL
+// ═══════════════════════════════════════════════════════
+function setPeriodo(v) {
+  const ahora = new Date();
+  let desde=null, hasta=null;
+  if (v==='mes')      { desde=new Date(ahora.getFullYear(),ahora.getMonth(),1); hasta=new Date(ahora.getFullYear(),ahora.getMonth()+1,0); }
+  else if (v==='anterior') { desde=new Date(ahora.getFullYear(),ahora.getMonth()-1,1); hasta=new Date(ahora.getFullYear(),ahora.getMonth(),0); }
+  else if (v==='trimestre'){ const q=Math.floor(ahora.getMonth()/3); desde=new Date(ahora.getFullYear(),q*3,1); hasta=new Date(ahora.getFullYear(),q*3+3,0); }
+  else if (v==='anio')     { desde=new Date(ahora.getFullYear(),0,1); hasta=new Date(ahora.getFullYear(),11,31); }
+  const toISO=d=>d?d.toISOString().split('T')[0]:'';
+  document.getElementById('h-desde').value=toISO(desde);
+  document.getElementById('h-hasta').value=toISO(hasta);
+  renderHistorial();
+}
+function limpiarFiltrosHistorial() {
+  document.getElementById('h-desde').value='';
+  document.getElementById('h-hasta').value='';
+  document.getElementById('h-medio').value='';
+  renderHistorial();
+}
+function renderHistorial() {
+  const desde = document.getElementById('h-desde').value;
+  const hasta = document.getElementById('h-hasta').value;
+  const medio = document.getElementById('h-medio').value;
+  let lista = getPedidos().filter(p=>p.estado==='entregado');
+  if (desde) lista=lista.filter(p=>(p.fechaEntrega||p.creado?.split('T')[0])>=desde);
+  if (hasta) lista=lista.filter(p=>(p.fechaEntrega||p.creado?.split('T')[0])<=hasta);
+  if (medio) lista=lista.filter(p=>p.medioPago===medio);
+  lista.sort((a,b)=>new Date(b.fechaEntrega||b.creado)-new Date(a.fechaEntrega||a.creado));
+
+  const sumM=mon=>lista.filter(p=>(p.monedaCobro||p.moneda)===mon).reduce((s,p)=>s+(p.cobrado||p.precio||0)*(p.cantidad||1),0);
+  const tARS=sumM('ARS'),tUSD=sumM('USD'),tEUR=sumM('EUR');
+  document.getElementById('hist-metrics').innerHTML=`
+    <div class="metric"><div class="metric-label">Pedidos</div><div class="metric-value">${lista.length}</div></div>
+    ${tARS>0?`<div class="metric"><div class="metric-label">Facturado ARS</div><div class="metric-value" style="font-size:18px">$${Math.round(tARS).toLocaleString('es-AR')}</div></div>`:''}
+    ${tUSD>0?`<div class="metric"><div class="metric-label">Facturado USD</div><div class="metric-value" style="font-size:18px">USD ${tUSD.toFixed(2)}</div></div>`:''}
+    ${tEUR>0?`<div class="metric"><div class="metric-label">Facturado EUR</div><div class="metric-value" style="font-size:18px">€${tEUR.toFixed(2)}</div></div>`:''}
+    <div class="metric"><div class="metric-label">Unidades</div><div class="metric-value">${lista.reduce((s,p)=>s+p.cantidad,0)}</div></div>
+  `;
+  const el=document.getElementById('tabla-historial');
+  if (!lista.length) { el.innerHTML='<div class="empty"><i class="ti ti-history"></i><p>No hay ventas en el período seleccionado</p></div>'; return; }
+  el.innerHTML=`<div class="table-wrap"><table>
+    <thead><tr><th>Fecha entrega</th><th>Producto</th><th>Cliente</th><th>Qty</th><th>Cobrado</th><th>Medio de pago</th><th>Acordado</th><th></th></tr></thead>
+    <tbody>${lista.map(p=>{
+      const cobMon=p.monedaCobro||p.moneda, cobVal=p.cobrado||p.precio;
+      return `<tr>
+        <td class="text-sm text-muted">${fmtFecha(p.fechaEntrega)}</td>
+        <td><strong>${p.nombre}</strong></td>
+        <td>${p.cliente||'—'}</td>
+        <td>${p.cantidad}</td>
+        <td>${cobVal?`<strong>${fmt(cobVal,cobMon)}</strong>`:'—'}</td>
+        <td>${p.medioPago?`<span class="tag">${medioLabel[p.medioPago]||p.medioPago}</span>`:'—'}</td>
+        <td class="text-muted text-sm">${p.precio&&p.precio!==p.cobrado?fmt(p.precio,p.moneda):'—'}</td>
+        <td><button class="btn btn-sm" onclick="editarPedido('${p.id}')"><i class="ti ti-pencil"></i></button></td>
+      </tr>`;
+    }).join('')}</tbody></table></div>`;
+}
+
+// ═══════════════════════════════════════════════════════
+// MATERIALES
+// ═══════════════════════════════════════════════════════
+function renderMatMetrics() {
+  const mats  = getMateriales();
+  const res   = getStockReservado();
+  const bajos = mats.filter(m=>m.stockMinimo>0 && m.stock<=(m.stockMinimo));
+  const fils  = mats.filter(m=>m.tipo==='filamento');
+  const totKg = fils.reduce((s,m)=>s+(m.unidad==='kg'?m.stock:m.unidad==='g'?m.stock/1000:0),0);
+  document.getElementById('mat-metrics').innerHTML=`
+    <div class="metric"><div class="metric-label">Materiales</div><div class="metric-value">${mats.length}</div></div>
+    <div class="metric"><div class="metric-label">Stock bajo</div><div class="metric-value" style="color:${bajos.length>0?'var(--red)':'var(--text)'}">${bajos.length}</div></div>
+    <div class="metric"><div class="metric-label">Filamento total</div><div class="metric-value" style="font-size:18px">${totKg.toFixed(2)} kg</div></div>
+    <div class="metric"><div class="metric-label">Items reservados</div><div class="metric-value">${Object.keys(res).length}</div></div>
+  `;
+}
+
+function renderMateriales() {
+  renderMatMetrics();
+  const busq = (document.getElementById('mat-buscar')?.value||'').toLowerCase();
+  const tipo = document.getElementById('mat-tipo-filt')?.value||'';
+  const res  = getStockReservado();
+  let mats = getMateriales();
+  if (busq) mats=mats.filter(m=>m.nombre.toLowerCase().includes(busq)||(m.proveedor||'').toLowerCase().includes(busq));
+  if (tipo) mats=mats.filter(m=>m.tipo===tipo);
+  mats.sort((a,b)=>a.nombre.localeCompare(b.nombre));
+
+  const el=document.getElementById('tabla-materiales');
+  if (!mats.length) { el.innerHTML='<div class="empty"><i class="ti ti-package"></i><p>Sin materiales cargados</p></div>'; return; }
+
+  el.innerHTML=`<div class="table-wrap"><table>
+    <thead><tr><th>Material</th><th>Tipo</th><th>Stock real</th><th>Reservado</th><th>Disponible</th><th>Mínimo</th><th>Estado</th><th>Costo/u</th><th>Proveedor</th><th></th></tr></thead>
+    <tbody>${mats.map(m=>{
+      const reservado = res[m.id]||0;
+      const disponible= Math.max(0, m.stock - reservado);
+      const pct = m.stock>0 ? Math.min(100, Math.round((disponible/(m.stockMinimo>0?m.stockMinimo*3:m.stock))*100)) : 0;
+      const fill= pct<25?'#a32d2d':pct<60?'#ba7517':'#1d9e75';
+      const estado = m.stock<=0 ? `<span class="badge badge-low">Sin stock</span>`
+        : (m.stockMinimo>0 && disponible<=m.stockMinimo) ? `<span class="badge badge-warn">Bajo</span>`
+        : `<span class="badge badge-ok">OK</span>`;
+      return `<tr>
+        <td><strong>${m.nombre}</strong>${m.notas?`<div class="text-sm text-muted mt-4">${m.notas}</div>`:''}</td>
+        <td><span class="tag">${m.tipo}</span></td>
+        <td><strong>${m.stock}</strong> ${m.unidad}</td>
+        <td class="text-sm ${reservado>0?'':'text-muted'}">${reservado>0?`<span class="reserved-badge"><i class="ti ti-lock" style="font-size:10px"></i> ${reservado} ${m.unidad}</span>`:'—'}</td>
+        <td>
+          <span class="stock-bar"><span class="stock-bar-fill" style="width:${pct}%;background:${fill}"></span></span>
+          <strong>${disponible}</strong> ${m.unidad}
+        </td>
+        <td class="text-muted text-sm">${m.stockMinimo||'—'}${m.stockMinimo?' '+m.unidad:''}</td>
+        <td>${estado}</td>
+        <td class="text-sm">${m.costo?fmt(m.costo,m.moneda||'ARS')+'/'+m.unidad:'—'}</td>
+        <td class="text-sm text-muted">${m.proveedor||'—'}</td>
+        <td><div class="flex-gap">
+          <button class="btn btn-sm" onclick="editarMaterial('${m.id}')"><i class="ti ti-pencil"></i></button>
+          <button class="btn btn-sm btn-danger" onclick="borrarMaterial('${m.id}')"><i class="ti ti-trash"></i></button>
+        </div></td>
+      </tr>`;
+    }).join('')}</tbody></table></div>`;
+}
+
+function renderMovimientos() {
+  const movs = getMovimientos().slice().sort((a,b)=>new Date(b.fecha)-new Date(a.fecha)).slice(0,30);
+  const mats = getMateriales();
+  const el   = document.getElementById('tabla-movimientos');
+  if (!movs.length) { el.innerHTML='<div class="empty"><i class="ti ti-arrows-exchange"></i><p>Sin movimientos</p></div>'; return; }
+  el.innerHTML=`<div class="table-wrap"><table>
+    <thead><tr><th>Fecha</th><th>Material</th><th>Tipo</th><th>Cantidad</th><th>Stock post</th><th>Motivo</th></tr></thead>
+    <tbody>${movs.map(mv=>{
+      const mat=mats.find(m=>m.id===mv.materialId);
+      return `<tr>
+        <td class="text-sm text-muted">${fmtFecha(mv.fecha)}</td>
+        <td>${mat?.nombre||mv.materialId}</td>
+        <td>${mv.tipo==='entrada'?'<span class="badge badge-ok">Entrada</span>':'<span class="badge badge-warn">Salida</span>'}</td>
+        <td class="${mv.tipo==='entrada'?'text-strong':''}">${mv.tipo==='entrada'?'+':'-'}${mv.cantidad} ${mat?.unidad||''}</td>
+        <td class="text-sm">${mv.stockPost} ${mat?.unidad||''}</td>
+        <td class="text-sm text-muted">${mv.motivo||'—'}</td>
+      </tr>`;
+    }).join('')}</tbody></table></div>`;
+}
+
+function poblarSelectMateriales() {
+  ['uso-mat-id','rep-mat-id'].forEach(sid=>{
+    const sel=document.getElementById(sid); if(!sel) return;
+    const prev=sel.value;
+    sel.innerHTML='<option value="">— Seleccioná —</option>';
+    getMateriales().forEach(m=>{
+      const o=document.createElement('option');
+      o.value=m.id; o.textContent=`${m.nombre} (${m.stock} ${m.unidad})`;
+      sel.appendChild(o);
+    });
+    if(prev) sel.value=prev;
+  });
+}
+
+function abrirModalMaterial(id) {
+  document.getElementById('modal-mat-title').textContent = id?'Editar material / insumo':'Nuevo material / insumo';
+  document.getElementById('mm-id').value=id||'';
+  if (id) {
+    const m=getMateriales().find(x=>x.id===id); if(!m) return;
+    const s=(eid,v)=>{const el=document.getElementById(eid);if(el)el.value=v??'';};
+    s('mm-nombre',m.nombre); s('mm-tipo',m.tipo); s('mm-stock',m.stock);
+    s('mm-unidad',m.unidad); s('mm-minimo',m.stockMinimo||'');
+    s('mm-costo',m.costo||''); s('mm-moneda',m.moneda||'ARS');
+    s('mm-proveedor',m.proveedor||''); s('mm-notas',m.notas||'');
+  } else {
+    ['mm-nombre','mm-stock','mm-minimo','mm-costo','mm-proveedor','mm-notas'].forEach(eid=>{const el=document.getElementById(eid);if(el)el.value='';});
+    document.getElementById('mm-tipo').value='filamento';
+    document.getElementById('mm-unidad').value='g';
+    document.getElementById('mm-moneda').value=getConfig().moneda||'ARS';
+  }
+  document.getElementById('modal-material').classList.add('open');
+}
+function editarMaterial(id) { abrirModalMaterial(id); }
+
+function guardarMaterial() {
+  const nombre=document.getElementById('mm-nombre').value.trim();
+  if (!nombre) { toast('Completá el nombre'); return; }
+  const id=document.getElementById('mm-id').value;
+  const mat={
+    id:id||uid(), nombre,
+    tipo:    document.getElementById('mm-tipo').value,
+    stock:   parseFloat(document.getElementById('mm-stock').value)||0,
+    unidad:  document.getElementById('mm-unidad').value,
+    stockMinimo: parseFloat(document.getElementById('mm-minimo').value)||0,
+    costo:   parseFloat(document.getElementById('mm-costo').value)||0,
+    moneda:  document.getElementById('mm-moneda').value,
+    proveedor: document.getElementById('mm-proveedor').value,
+    notas:   document.getElementById('mm-notas').value,
+  };
+  const mats=getMateriales();
+  const idx=mats.findIndex(x=>x.id===mat.id);
+  if (idx>=0) mats[idx]=mat; else mats.push(mat);
+  DB.set('materiales',mats);
+  cerrarModal('modal-material');
+  renderMateriales(); poblarSelectMateriales();
+  toast('Material guardado ✓');
+}
+function borrarMaterial(id) {
+  if (!confirm('¿Eliminar este material?')) return;
+  DB.set('materiales',getMateriales().filter(x=>x.id!==id));
+  renderMateriales(); poblarSelectMateriales();
+  toast('Material eliminado');
+}
+
+function registrarUso() {
+  const matId=document.getElementById('uso-mat-id').value;
+  const cant=parseFloat(document.getElementById('uso-cantidad').value);
+  const motivo=document.getElementById('uso-motivo').value;
+  if (!matId||!cant||cant<=0) { toast('Seleccioná material y cantidad'); return; }
+  const mats=getMateriales();
+  const idx=mats.findIndex(m=>m.id===matId); if(idx<0) return;
+  mats[idx].stock=Math.max(0,parseFloat((mats[idx].stock-cant).toFixed(4)));
+  DB.set('materiales',mats);
+  const movs=getMovimientos();
+  movs.unshift({id:uid(),fecha:new Date().toISOString(),materialId:matId,tipo:'salida',cantidad:cant,stockPost:mats[idx].stock,motivo:motivo||'Salida manual'});
+  DB.set('movimientos',movs);
+  document.getElementById('uso-cantidad').value='';
+  document.getElementById('uso-motivo').value='';
+  renderMateriales(); renderMovimientos(); poblarSelectMateriales();
+  toast('Salida registrada ✓');
+}
+
+function abrirModalReposicion() {
+  poblarSelectMateriales();
+  ['rep-cantidad','rep-costo','rep-proveedor','rep-notas'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  document.getElementById('modal-reposicion').classList.add('open');
+}
+
+function guardarReposicion() {
+  const matId=document.getElementById('rep-mat-id').value;
+  const cant=parseFloat(document.getElementById('rep-cantidad').value);
+  if (!matId||!cant||cant<=0) { toast('Seleccioná material y cantidad'); return; }
+  const mats=getMateriales();
+  const idx=mats.findIndex(m=>m.id===matId); if(idx<0) return;
+  mats[idx].stock=parseFloat((mats[idx].stock+cant).toFixed(4));
+  const prov=document.getElementById('rep-proveedor').value;
+  if (prov) mats[idx].proveedor=prov;
+  DB.set('materiales',mats);
+  const movs=getMovimientos();
+  movs.unshift({id:uid(),fecha:new Date().toISOString(),materialId:matId,tipo:'entrada',cantidad:cant,stockPost:mats[idx].stock,motivo:document.getElementById('rep-notas').value||'Compra/reposición'});
+  DB.set('movimientos',movs);
+  cerrarModal('modal-reposicion');
+  renderMateriales(); renderMovimientos(); poblarSelectMateriales();
+  toast('Reposición registrada ✓');
+}
+
+// ═══════════════════════════════════════════════════════
+// DASHBOARD
+// ═══════════════════════════════════════════════════════
+function renderDashboard() {
+  const pedidos  = getPedidos();
+  const activos  = pedidos.filter(p=>p.estado!=='entregado'&&p.estado!=='cancelado');
+  const entreg   = pedidos.filter(p=>p.estado==='entregado');
+  const mats     = getMateriales();
+  const res      = getStockReservado();
+  const bajos    = mats.filter(m=>m.stockMinimo>0 && Math.max(0,m.stock-(res[m.id]||0))<=m.stockMinimo);
+
+  document.getElementById('dash-metrics').innerHTML=`
+    <div class="metric"><div class="metric-label">Activos</div><div class="metric-value">${activos.length}</div></div>
+    <div class="metric"><div class="metric-label">Entregados</div><div class="metric-value">${entreg.length}</div></div>
+    <div class="metric"><div class="metric-label">Cotizaciones</div><div class="metric-value">${getCots().length}</div></div>
+    <div class="metric"><div class="metric-label">Stock bajo</div><div class="metric-value" style="color:${bajos.length>0?'var(--red)':'var(--text)'}">${bajos.length}</div></div>
+  `;
+
+  const da=document.getElementById('dash-activos');
+  if (!activos.length) { da.innerHTML='<div class="empty" style="padding:20px"><i class="ti ti-mood-smile"></i><p>No hay pedidos activos</p></div>'; }
+  else da.innerHTML=`<div class="table-wrap"><table>
+    <thead><tr><th>Producto</th><th>Cliente</th><th>Precio</th><th>Entrega</th><th>Estado</th></tr></thead>
+    <tbody>${activos.slice(0,6).map(p=>`<tr>
+      <td>${p.nombre}</td><td>${p.cliente||'—'}</td>
+      <td class="text-sm">${p.precio?fmt(p.precio,p.moneda):'—'}</td>
+      <td class="text-sm">${fmtFecha(p.fechaPrometida)}</td>
+      <td>${badgeEstado(p.estado)}</td>
+    </tr>`).join('')}</tbody></table></div>`;
+
+  const ds=document.getElementById('dash-stock');
+  const bajosConRes=mats.filter(m=>m.stockMinimo>0&&(m.stock-(res[m.id]||0))<=m.stockMinimo);
+  if (!bajosConRes.length) { ds.innerHTML='<div class="empty" style="padding:20px"><i class="ti ti-check"></i><p>Todo en orden</p></div>'; }
+  else ds.innerHTML=`<div class="table-wrap"><table>
+    <thead><tr><th>Material</th><th>Disponible</th><th>Reservado</th><th>Mínimo</th></tr></thead>
+    <tbody>${bajosConRes.slice(0,5).map(m=>`<tr>
+      <td>${m.nombre}</td>
+      <td style="color:var(--red)"><strong>${Math.max(0,m.stock-(res[m.id]||0))} ${m.unidad}</strong></td>
+      <td class="text-sm">${res[m.id]?res[m.id]+' '+m.unidad:'—'}</td>
+      <td class="text-sm text-muted">${m.stockMinimo} ${m.unidad}</td>
+    </tr>`).join('')}</tbody></table></div>`;
+
+  // ── Alertas de vencimiento ──
+  const hoy    = new Date(); hoy.setHours(0,0,0,0);
+  const manana = new Date(hoy); manana.setDate(hoy.getDate()+1);
+  const pasado = new Date(hoy); pasado.setDate(hoy.getDate()+2);
+  const vencidos = activos.filter(p=>{
+    if (!p.fechaPrometida) return false;
+    const f = new Date(p.fechaPrometida+'T12:00:00'); f.setHours(0,0,0,0);
+    return f < hoy;
+  });
+  const proximos = activos.filter(p=>{
+    if (!p.fechaPrometida) return false;
+    const f = new Date(p.fechaPrometida+'T12:00:00'); f.setHours(0,0,0,0);
+    return f >= hoy && f <= pasado;
+  });
+  const alertEl = document.getElementById('dash-alertas');
+  let alertsHtml = '';
+  vencidos.forEach(p=>{
+    alertsHtml += `<div class="alert-banner alert-red"><i class="ti ti-alarm"></i><div><strong>VENCIDO:</strong> "${p.nombre}" para ${p.cliente||'—'} — prometido el ${fmtFecha(p.fechaPrometida)}</div><span class="ab-action" onclick="editarPedido('${p.id}');showSection('pedidos')">Ver pedido →</span></div>`;
+  });
+  proximos.forEach(p=>{
+    const f = new Date(p.fechaPrometida+'T12:00:00'); f.setHours(0,0,0,0);
+    const label = f.getTime()===hoy.getTime() ? 'HOY' : f.getTime()===manana.getTime() ? 'MAÑANA' : 'PASADO MAÑANA';
+    alertsHtml += `<div class="alert-banner alert-amber"><i class="ti ti-clock"></i><div><strong>${label}:</strong> "${p.nombre}" para ${p.cliente||'—'}</div><span class="ab-action" onclick="editarPedido('${p.id}');showSection('pedidos')">Ver pedido →</span></div>`;
+  });
+  alertEl.innerHTML = alertsHtml;
+
+  document.getElementById('sb-brand').textContent = getConfig().negocio||'ADNlab';
+}
+
+// ═══════════════════════════════════════════════════════
+// CONFIGURACIÓN
+// ═══════════════════════════════════════════════════════
+function cargarConfig() {
+  const cfg=getConfig();
+  const s=(id,v)=>{const el=document.getElementById(id);if(el&&v!==undefined)el.value=v;};
+  s('cfg-negocio',cfg.negocio); s('cfg-email',cfg.email||''); s('cfg-tel',cfg.tel||'');
+  s('cfg-ig',cfg.ig||''); s('cfg-web',cfg.web||''); s('cfg-ciudad',cfg.ciudad||'');
+  s('cfg-pie',cfg.pie||''); s('cfg-kg-pla',cfg.kgPla); s('cfg-kg-petg',cfg.kgPetg);
+  s('cfg-kg-abs',cfg.kgAbs); s('cfg-hora',cfg.hora); s('cfg-hora-diseno',cfg.horaDiseno);
+  s('cfg-margen',cfg.margen); s('cfg-moneda',cfg.moneda);
+}
+function guardarConfig() {
+  const g=id=>parseFloat(document.getElementById(id)?.value)||0;
+  const t=id=>document.getElementById(id)?.value||'';
+  const cfg={kgPla:g('cfg-kg-pla'),kgPetg:g('cfg-kg-petg'),kgAbs:g('cfg-kg-abs'),hora:g('cfg-hora'),horaDiseno:g('cfg-hora-diseno'),margen:g('cfg-margen'),moneda:t('cfg-moneda'),negocio:t('cfg-negocio')||'ADNlab',email:t('cfg-email'),tel:t('cfg-tel'),ig:t('cfg-ig'),web:t('cfg-web'),ciudad:t('cfg-ciudad'),pie:t('cfg-pie')};
+  DB.set('config',cfg);
+  document.getElementById('q-margen').value=cfg.margen;
+  document.getElementById('q-moneda').value=cfg.moneda;
+  if (cfg.hora)       document.getElementById('q-costo-hora').value=cfg.hora;
+  if (cfg.horaDiseno) document.getElementById('q-costo-diseno').value=cfg.horaDiseno;
+  if (cfg.kgPla)      document.getElementById('q-costo-kg').value=cfg.kgPla;
+  document.getElementById('sb-brand').textContent=cfg.negocio;
+  toast('Configuración guardada ✓');
+}
+
+// ═══════════════════════════════════════════════════════
+// EXPORT / IMPORT
+// ═══════════════════════════════════════════════════════
+function exportarDatos() {
+  const data={exportado:new Date().toISOString(),pedidos:getPedidos(),cotizaciones:getCots(),materiales:getMateriales(),movimientos:getMovimientos(),config:getConfig()};
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download='adnlab-backup-'+new Date().toISOString().split('T')[0]+'.json'; a.click();
+}
+function importarDatos() { document.getElementById('import-file').click(); }
+function procesarImport(e) {
+  const file=e.target.files[0]; if(!file) return;
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    try {
+      const d=JSON.parse(ev.target.result);
+      if(d.pedidos)      DB.set('pedidos',d.pedidos);
+      if(d.cotizaciones) DB.set('cotizaciones',d.cotizaciones);
+      if(d.materiales)   DB.set('materiales',d.materiales);
+      if(d.movimientos)  DB.set('movimientos',d.movimientos);
+      if(d.config)       DB.set('config',d.config);
+      toast('Datos importados ✓'); renderDashboard();
+    } catch { toast('Error al importar el archivo'); }
+  };
+  reader.readAsText(file);
+}
+function confirmarBorrar() {
+  if (!confirm('¿Borrar TODOS los datos? Esta acción no se puede deshacer.')) return;
+  ['pedidos','cotizaciones','materiales','movimientos','config'].forEach(k=>localStorage.removeItem('rl3d_'+k));
+  toast('Datos eliminados'); renderDashboard();
+}
+
+// ═══════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════
+(function init() {
+  const cfg=getConfig();
+  document.getElementById('q-margen').value=cfg.margen||40;
+  document.getElementById('q-moneda').value=cfg.moneda||'ARS';
+  if (cfg.hora)       document.getElementById('q-costo-hora').value=cfg.hora;
+  if (cfg.horaDiseno) document.getElementById('q-costo-diseno').value=cfg.horaDiseno;
+  if (cfg.kgPla)      document.getElementById('q-costo-kg').value=cfg.kgPla;
+  document.getElementById('sb-brand').textContent=cfg.negocio||'ADNlab';
+  renderDashboard();
+  filtrarPedidos('todos');
+})();
+
+// ═══════════════════════════════════════════════════════
+// TIPO DE CAMBIO
+// ═══════════════════════════════════════════════════════
+const getTC = () => DB.get('tipo_cambio') || { usd: 1400, eur: 1550 };
+function guardarTC() {
+  const tc = getTC();
+  const usdEl = document.getElementById('tc-usd');
+  if (usdEl && usdEl.value) tc.usd = parseFloat(usdEl.value)||1400;
+  DB.set('tipo_cambio', tc);
+}
+function toARS(amount, moneda) {
+  const tc = getTC();
+  if (moneda === 'USD') return amount * tc.usd;
+  if (moneda === 'EUR') return amount * (tc.eur||tc.usd*1.1);
+  return amount;
+}
+
+// ═══════════════════════════════════════════════════════
+// CLIENTES
+// ═══════════════════════════════════════════════════════
+const getClientes = () => DB.get('clientes') || [];
+
+function renderClientes() {
+  const busq  = (document.getElementById('cli-buscar')?.value||'').toLowerCase();
+  const pedidos = getPedidos();
+  let clis = getClientes();
+  if (busq) clis = clis.filter(c=>c.nombre.toLowerCase().includes(busq)||(c.email||'').toLowerCase().includes(busq));
+  clis = clis.map(c=>{
+    const cpedidos = pedidos.filter(p=>p.cliente?.trim().toLowerCase()===c.nombre.trim().toLowerCase());
+    const total = cpedidos.filter(p=>p.estado==='entregado').reduce((s,p)=>s+toARS(p.cobrado||p.precio||0, p.monedaCobro||p.moneda)*(p.cantidad||1),0);
+    return {...c, _pedidos: cpedidos.length, _entregados: cpedidos.filter(p=>p.estado==='entregado').length, _totalARS: total };
+  }).sort((a,b)=>b._totalARS-a._totalARS);
+
+  const el = document.getElementById('lista-clientes');
+  if (!clis.length) {
+    el.innerHTML='<div class="empty"><i class="ti ti-users"></i><p>No hay clientes aún. Se crean automáticamente cuando guardás un pedido con nombre de cliente.</p></div>'; return;
+  }
+  el.innerHTML = clis.map(c=>{
+    const initials = c.nombre.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+    const tipoLabel = {particular:'Particular',empresa:'Empresa B2B',revendedor:'Revendedor'}[c.tipo]||c.tipo;
+    return `<div class="cliente-card" onclick="verCliente('${c.id}')">
+      <div class="cliente-avatar">${initials}</div>
+      <div class="cliente-info">
+        <div class="cliente-nombre">${c.nombre}</div>
+        <div class="cliente-sub">${[tipoLabel, c.ciudad, c.email].filter(Boolean).join(' · ')}</div>
+      </div>
+      <div class="cliente-stats">
+        <div class="cliente-total">${c._totalARS>0?'$'+Math.round(c._totalARS).toLocaleString('es-AR'):c._entregados>0?'—':'Sin ventas'}</div>
+        <div class="cliente-pedidos">${c._pedidos} pedido${c._pedidos!==1?'s':''} · ${c._entregados} entregado${c._entregados!==1?'s':''}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function abrirModalCliente(id) {
+  document.getElementById('modal-cli-title').textContent = id?'Editar cliente':'Nuevo cliente';
+  document.getElementById('mc-id').value = id||'';
+  if (id) {
+    const c=getClientes().find(x=>x.id===id); if(!c) return;
+    const s=(eid,v)=>{const el=document.getElementById(eid);if(el)el.value=v??'';};
+    s('mc-nombre',c.nombre); s('mc-email',c.email||''); s('mc-tel',c.tel||'');
+    s('mc-ig',c.ig||''); s('mc-tipo',c.tipo||'particular'); s('mc-ciudad',c.ciudad||''); s('mc-notas',c.notas||'');
+  } else {
+    ['mc-nombre','mc-email','mc-tel','mc-ig','mc-ciudad','mc-notas'].forEach(eid=>{const el=document.getElementById(eid);if(el)el.value='';});
+    document.getElementById('mc-tipo').value='particular';
+  }
+  document.getElementById('modal-cliente').classList.add('open');
+}
+
+function guardarCliente() {
+  const nombre=document.getElementById('mc-nombre').value.trim();
+  if (!nombre) { toast('Completá el nombre'); return; }
+  const id=document.getElementById('mc-id').value;
+  const cli={
+    id:id||uid(), nombre,
+    email:document.getElementById('mc-email').value,
+    tel:document.getElementById('mc-tel').value,
+    ig:document.getElementById('mc-ig').value,
+    tipo:document.getElementById('mc-tipo').value,
+    ciudad:document.getElementById('mc-ciudad').value,
+    notas:document.getElementById('mc-notas').value,
+    creado:id?(getClientes().find(x=>x.id===id)?.creado||new Date().toISOString()):new Date().toISOString(),
+  };
+  const clis=getClientes();
+  const idx=clis.findIndex(x=>x.id===cli.id);
+  if(idx>=0) clis[idx]=cli; else clis.push(cli);
+  DB.set('clientes',clis);
+  cerrarModal('modal-cliente');
+  renderClientes();
+  toast('Cliente guardado ✓');
+}
+
+function verCliente(id) {
+  const c=getClientes().find(x=>x.id===id); if(!c) return;
+  const pedidos=getPedidos().filter(p=>p.cliente?.trim().toLowerCase()===c.nombre.trim().toLowerCase());
+  const entregados=pedidos.filter(p=>p.estado==='entregado');
+  const totalARS=entregados.reduce((s,p)=>s+toARS(p.cobrado||p.precio||0,p.monedaCobro||p.moneda)*(p.cantidad||1),0);
+  const initials=c.nombre.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+  document.getElementById('modal-cli-det-title').textContent=c.nombre;
+  document.getElementById('modal-cli-det-body').innerHTML=`
+    <div style="display:flex;gap:14px;align-items:center;margin-bottom:20px;">
+      <div class="cliente-avatar" style="width:52px;height:52px;font-size:20px;">${initials}</div>
+      <div>
+        <div style="font-size:16px;font-weight:600;">${c.nombre}</div>
+        <div class="text-sm text-muted">${{particular:'Particular',empresa:'Empresa B2B',revendedor:'Revendedor'}[c.tipo]||c.tipo}${c.ciudad?' · '+c.ciudad:''}</div>
+      </div>
+      <button class="btn btn-sm" style="margin-left:auto" onclick="cerrarModal('modal-cli-detalle');abrirModalCliente('${c.id}')"><i class="ti ti-pencil"></i> Editar</button>
+    </div>
+    <div class="form-row cols-3" style="margin-bottom:16px;">
+      ${c.email?`<div class="field"><label>Email</label><div style="font-size:13px;">${c.email}</div></div>`:''}
+      ${c.tel?`<div class="field"><label>Teléfono</label><div style="font-size:13px;">${c.tel}</div></div>`:''}
+      ${c.ig?`<div class="field"><label>Instagram</label><div style="font-size:13px;">${c.ig}</div></div>`:''}
+    </div>
+    ${c.notas?`<div style="font-size:13px;color:var(--text2);margin-bottom:16px;padding:10px;background:var(--surface2);border-radius:var(--radius);">${c.notas}</div>`:''}
+    <div class="metrics" style="margin-bottom:16px;">
+      <div class="metric"><div class="metric-label">Total pedidos</div><div class="metric-value">${pedidos.length}</div></div>
+      <div class="metric"><div class="metric-label">Entregados</div><div class="metric-value">${entregados.length}</div></div>
+      <div class="metric"><div class="metric-label">Facturado (ARS equiv.)</div><div class="metric-value" style="font-size:16px;">$${Math.round(totalARS).toLocaleString('es-AR')}</div></div>
+    </div>
+    ${pedidos.length>0?`<div style="font-size:11px;font-weight:500;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px;">Historial de pedidos</div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Producto</th><th>Qty</th><th>Precio</th><th>Estado</th><th>Fecha</th></tr></thead>
+      <tbody>${pedidos.sort((a,b)=>new Date(b.creado)-new Date(a.creado)).map(p=>`<tr>
+        <td>${p.nombre}</td><td>${p.cantidad}</td>
+        <td>${p.cobrado?fmt(p.cobrado,p.monedaCobro||p.moneda):p.precio?fmt(p.precio,p.moneda):'—'}</td>
+        <td>${badgeEstado(p.estado)}</td>
+        <td class="text-sm text-muted">${fmtFecha(p.fechaEntrega||p.creado)}</td>
+      </tr>`).join('')}</tbody>
+    </table></div>`:'<div class="empty" style="padding:24px"><i class="ti ti-clipboard-list"></i><p>Sin pedidos aún</p></div>'}
+  `;
+  document.getElementById('modal-cli-detalle').classList.add('open');
+}
+
+// ═══════════════════════════════════════════════════════
+// RENTABILIDAD
+// ═══════════════════════════════════════════════════════
+function renderRentabilidad() {
+  const tc = getTC();
+  const usdEl = document.getElementById('tc-usd');
+  if (usdEl && !usdEl.value) usdEl.value = tc.usd;
+
+  const entregados = getPedidos().filter(p=>p.estado==='entregado' && (p.fechaEntrega||p.creado));
+
+  // Agrupar por mes (últimos 12)
+  const meses = {};
+  const hoy = new Date();
+  for (let i=11; i>=0; i--) {
+    const d = new Date(hoy.getFullYear(), hoy.getMonth()-i, 1);
+    const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+    meses[key] = { label: d.toLocaleDateString('es-AR',{month:'short',year:'2-digit'}), facturado:0, costo:0 };
+  }
+
+  entregados.forEach(p=>{
+    const fecha = p.fechaEntrega || p.creado?.split('T')[0];
+    if (!fecha) return;
+    const key = fecha.slice(0,7);
+    if (!meses[key]) return;
+    const cobrado = p.cobrado||p.precio||0;
+    const moneda  = p.monedaCobro||p.moneda||'ARS';
+    meses[key].facturado += toARS(cobrado, moneda) * (p.cantidad||1);
+    // Costo estimado de materiales: si hay insumos vinculados los sumamos
+    let costoMat = 0;
+    if (p.filMatId && p.gramosPorUnidad) {
+      const mat = getMateriales().find(m=>m.id===p.filMatId);
+      if (mat) costoMat += (mat.costo||0) / (mat.unidad==='kg'?1000:1) * p.gramosPorUnidad * (p.cantidad||1);
+    }
+    (p.insumosVinculados||[]).forEach(ins=>{
+      const mat = getMateriales().find(m=>m.id===ins.materialId);
+      if (mat) costoMat += toARS((mat.costo||0)*ins.cantPorUnidad*(p.cantidad||1), mat.moneda||'ARS');
+    });
+    meses[key].costo += costoMat;
+  });
+
+  const vals = Object.values(meses);
+  const maxVal = Math.max(...vals.map(m=>m.facturado), 1);
+
+  // Métricas totales
+  const totFact = vals.reduce((s,m)=>s+m.facturado,0);
+  const totCosto= vals.reduce((s,m)=>s+m.costo,0);
+  const totGan  = totFact - totCosto;
+  const margenPct= totFact>0 ? Math.round((totGan/totFact)*100) : 0;
+  const mejorMes = vals.reduce((a,b)=>a.facturado>=b.facturado?a:b, vals[0]);
+
+  document.getElementById('rent-metrics').innerHTML=`
+    <div class="metric"><div class="metric-label">Facturado total</div><div class="metric-value" style="font-size:16px;">$${Math.round(totFact).toLocaleString('es-AR')}</div><div class="metric-sub">ARS equiv.</div></div>
+    <div class="metric"><div class="metric-label">Costo materiales</div><div class="metric-value" style="font-size:16px;">$${Math.round(totCosto).toLocaleString('es-AR')}</div><div class="metric-sub">últ. 12 meses</div></div>
+    <div class="metric"><div class="metric-label">Ganancia neta</div><div class="metric-value" style="font-size:16px;color:var(--accent-dark);">$${Math.round(totGan).toLocaleString('es-AR')}</div></div>
+    <div class="metric"><div class="metric-label">Margen promedio</div><div class="metric-value">${margenPct}%</div></div>
+    <div class="metric"><div class="metric-label">Mejor mes</div><div class="metric-value" style="font-size:15px;">${mejorMes.label}</div><div class="metric-sub">$${Math.round(mejorMes.facturado).toLocaleString('es-AR')}</div></div>
+  `;
+
+  // Gráfico de barras
+  const chartEl = document.getElementById('rent-chart');
+  chartEl.innerHTML = vals.map(m=>{
+    const hFact = maxVal>0 ? Math.round((m.facturado/maxVal)*140) : 0;
+    const hCosto= maxVal>0 ? Math.round((m.costo/maxVal)*140) : 0;
+    const hGan  = m.facturado>0 ? Math.round(((m.facturado-m.costo)/maxVal)*140) : 0;
+    return `<div class="chart-col">
+      <div class="chart-bars">
+        <div class="chart-bar" style="height:${hFact}px;background:#1d9e75;" title="Facturado: $${Math.round(m.facturado).toLocaleString('es-AR')}"></div>
+        <div class="chart-bar" style="height:${Math.max(0,hCosto)}px;background:#e8734a;" title="Costo mat.: $${Math.round(m.costo).toLocaleString('es-AR')}"></div>
+        <div class="chart-bar" style="height:${Math.max(0,hGan)}px;background:#534ab7;" title="Ganancia: $${Math.round(m.facturado-m.costo).toLocaleString('es-AR')}"></div>
+      </div>
+      <div class="chart-label">${m.label}</div>
+    </div>`;
+  }).join('');
+
+  // Tabla detalle
+  document.getElementById('rent-tabla').innerHTML=`<div class="table-wrap"><table>
+    <thead><tr><th>Mes</th><th>Facturado</th><th>Costo mat.</th><th>Ganancia</th><th>Margen</th></tr></thead>
+    <tbody>${vals.filter(m=>m.facturado>0).map(m=>{
+      const gan=m.facturado-m.costo;
+      const mrg=m.facturado>0?Math.round((gan/m.facturado)*100):0;
+      return `<tr>
+        <td>${m.label}</td>
+        <td><strong>$${Math.round(m.facturado).toLocaleString('es-AR')}</strong></td>
+        <td class="text-muted">$${Math.round(m.costo).toLocaleString('es-AR')}</td>
+        <td style="color:var(--accent-dark)"><strong>$${Math.round(gan).toLocaleString('es-AR')}</strong></td>
+        <td><span class="tag">${mrg}%</span></td>
+      </tr>`;
+    }).join('')}</tbody>
+  </table></div>`;
+}
+
+// ═══════════════════════════════════════════════════════
+// CATÁLOGO
+// ═══════════════════════════════════════════════════════
+const getCatalogo = () => DB.get('catalogo') || [];
+
+function renderCatalogo() {
+  const busq = (document.getElementById('cat-buscar')?.value||'').toLowerCase();
+  let items = getCatalogo();
+  if (busq) items=items.filter(p=>p.nombre.toLowerCase().includes(busq)||(p.categoria||'').toLowerCase().includes(busq));
+  items.sort((a,b)=>a.nombre.localeCompare(b.nombre));
+  const el=document.getElementById('catalogo-grid');
+  if (!items.length) {
+    el.innerHTML='<div class="empty" style="grid-column:1/-1"><i class="ti ti-template"></i><p>Sin productos en el catálogo. Agregá productos tipo para cotizar rápido.</p></div>'; return;
+  }
+  el.innerHTML=items.map(p=>{
+    const costo=(p.gramos/1000)*(p.costoKg||0)+p.horas*(p.costoHora||0)+p.horasDiseno*(p.costoDiseno||0)+(p.post||0)+(p.insumos||0);
+    const precio=costo*(1+(p.margen||40)/100);
+    return `<div class="cat-card" onclick="cargarCatalogoEnCotizador('${p.id}')">
+      <div class="cat-card-actions" onclick="event.stopPropagation()">
+        <button class="btn btn-sm" onclick="abrirModalCatalogo('${p.id}')"><i class="ti ti-pencil"></i></button>
+        <button class="btn btn-sm btn-danger" onclick="borrarCatalogo('${p.id}')"><i class="ti ti-trash"></i></button>
+      </div>
+      ${p.categoria?`<div class="text-sm text-muted" style="margin-bottom:4px;">${p.categoria}</div>`:''}
+      <div class="cat-card-name">${p.nombre}</div>
+      <div class="cat-card-price">${fmt(precio, p.moneda||'ARS')}</div>
+      <div class="cat-card-meta">
+        ${p.gramos>0?`${p.gramos}g filamento<br>`:''}
+        ${p.horas>0?`${p.horas}hs impresión<br>`:''}
+        Margen: ${p.margen||40}%
+      </div>
+      <div style="margin-top:10px;font-size:11px;color:var(--accent-dark);font-weight:500;">← Clic para cotizar</div>
+    </div>`;
+  }).join('');
+}
+
+function abrirModalCatalogo(id) {
+  document.getElementById('modal-cat-title').textContent = id?'Editar producto tipo':'Nuevo producto tipo';
+  document.getElementById('mcat-id').value=id||'';
+  const cfg=getConfig();
+  if (id) {
+    const p=getCatalogo().find(x=>x.id===id); if(!p) return;
+    const s=(eid,v)=>{const el=document.getElementById(eid);if(el)el.value=v??'';};
+    s('mcat-nombre',p.nombre); s('mcat-categoria',p.categoria||''); s('mcat-gramos',p.gramos||0);
+    s('mcat-costo-kg',p.costoKg||0); s('mcat-horas',p.horas||0); s('mcat-costo-hora',p.costoHora||0);
+    s('mcat-horas-diseno',p.horasDiseno||0); s('mcat-costo-diseno',p.costoDiseno||0);
+    s('mcat-post',p.post||0); s('mcat-insumos',p.insumos||0); s('mcat-margen',p.margen||40);
+    s('mcat-moneda',p.moneda||'ARS'); s('mcat-desc',p.descripcion||'');
+  } else {
+    ['mcat-nombre','mcat-categoria','mcat-gramos','mcat-costo-kg','mcat-horas','mcat-costo-hora','mcat-horas-diseno','mcat-costo-diseno','mcat-post','mcat-insumos','mcat-desc'].forEach(eid=>{const el=document.getElementById(eid);if(el)el.value='';});
+    document.getElementById('mcat-margen').value=cfg.margen||40;
+    document.getElementById('mcat-moneda').value=cfg.moneda||'ARS';
+    if (cfg.hora) document.getElementById('mcat-costo-hora').value=cfg.hora;
+    if (cfg.horaDiseno) document.getElementById('mcat-costo-diseno').value=cfg.horaDiseno;
+    if (cfg.kgPla) document.getElementById('mcat-costo-kg').value=cfg.kgPla;
+  }
+  document.getElementById('modal-catalogo').classList.add('open');
+}
+
+function guardarCatalogo() {
+  const nombre=document.getElementById('mcat-nombre').value.trim();
+  if (!nombre) { toast('Completá el nombre'); return; }
+  const g=id=>parseFloat(document.getElementById(id)?.value)||0;
+  const id=document.getElementById('mcat-id').value;
+  const prod={
+    id:id||uid(), nombre,
+    categoria:document.getElementById('mcat-categoria').value,
+    gramos:g('mcat-gramos'), costoKg:g('mcat-costo-kg'),
+    horas:g('mcat-horas'), costoHora:g('mcat-costo-hora'),
+    horasDiseno:g('mcat-horas-diseno'), costoDiseno:g('mcat-costo-diseno'),
+    post:g('mcat-post'), insumos:g('mcat-insumos'),
+    margen:g('mcat-margen')||40,
+    moneda:document.getElementById('mcat-moneda').value,
+    descripcion:document.getElementById('mcat-desc').value,
+  };
+  const cat=getCatalogo();
+  const idx=cat.findIndex(x=>x.id===prod.id);
+  if(idx>=0) cat[idx]=prod; else cat.push(prod);
+  DB.set('catalogo',cat);
+  cerrarModal('modal-catalogo');
+  renderCatalogo();
+  toast('Producto guardado ✓');
+}
+
+function borrarCatalogo(id) {
+  if (!confirm('¿Eliminar este producto del catálogo?')) return;
+  DB.set('catalogo',getCatalogo().filter(x=>x.id!==id));
+  renderCatalogo();
+  toast('Producto eliminado');
+}
+
+function cargarCatalogoEnCotizador(id) {
+  const p=getCatalogo().find(x=>x.id===id); if(!p) return;
+  showSection('cotizador');
+  setTimeout(()=>{
+    const s=(eid,v)=>{const el=document.getElementById(eid);if(el)el.value=v??'';};
+    s('q-nombre',p.nombre);
+    s('q-descripcion',p.descripcion||'');
+    document.getElementById('q-usar-stock-fil').checked=false;
+    toggleFilStock();
+    s('q-gramos',p.gramos||0); s('q-costo-kg',p.costoKg||0);
+    s('q-unidades',1);
+    s('q-horas',p.horas||0); s('q-costo-hora',p.costoHora||0);
+    s('q-horas-diseno',p.horasDiseno||0); s('q-costo-diseno',p.costoDiseno||0);
+    s('q-postproceso',p.post||0); s('q-insumos-extra',p.insumos||0);
+    s('q-margen',p.margen||40); s('q-moneda',p.moneda||'ARS');
+    s('q-iva',0); s('q-envio',0); s('q-validez',7);
+    document.getElementById('q-insumos-lista').innerHTML='';
+    filaInsumoCount=0;
+    calcCotizacion();
+    toast('Producto cargado en el cotizador ✓');
+  }, 100);
+}
+
+// ═══════════════════════════════════════════════════════
+// CSV EXPORT
+// ═══════════════════════════════════════════════════════
+function exportarCSV() {
+  const desde=document.getElementById('h-desde').value;
+  const hasta=document.getElementById('h-hasta').value;
+  const medio=document.getElementById('h-medio').value;
+  let lista=getPedidos().filter(p=>p.estado==='entregado');
+  if (desde) lista=lista.filter(p=>(p.fechaEntrega||p.creado?.split('T')[0])>=desde);
+  if (hasta) lista=lista.filter(p=>(p.fechaEntrega||p.creado?.split('T')[0])<=hasta);
+  if (medio) lista=lista.filter(p=>p.medioPago===medio);
+  lista.sort((a,b)=>new Date(b.fechaEntrega||b.creado)-new Date(a.fechaEntrega||a.creado));
+
+  const tc=getTC();
+  const headers=['Fecha entrega','Producto','Cliente','Cantidad','Precio cobrado','Moneda','ARS equivalente','Medio de pago','Precio acordado','Moneda acordada'];
+  const rows=lista.map(p=>[
+    p.fechaEntrega||'',
+    p.nombre||'',
+    p.cliente||'',
+    p.cantidad||1,
+    p.cobrado||p.precio||0,
+    p.monedaCobro||p.moneda||'ARS',
+    Math.round(toARS(p.cobrado||p.precio||0, p.monedaCobro||p.moneda)*( p.cantidad||1)),
+    p.medioPago||'',
+    p.precio||'',
+    p.moneda||'ARS',
+  ]);
+    const NL='\n'; const csv=[headers,...rows].map(r=>r.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(',')).join(NL);
+  const blob=new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8;'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  const fecha=new Date().toISOString().split('T')[0];
+  a.download=`adnlab-ventas-${fecha}.csv`; a.click();
+  toast('CSV exportado ✓');
+}
+
+// ═══════════════════════════════════════════════════════
+// CSV RENTABILIDAD
+// ═══════════════════════════════════════════════════════
+function exportarCSVRentabilidad() {
+  const tc = getTC();
+  const entregados = getPedidos().filter(p => p.estado === 'entregado' && (p.fechaEntrega || p.creado));
+  entregados.sort((a,b) => new Date(b.fechaEntrega||b.creado) - new Date(a.fechaEntrega||a.creado));
+
+  const headers = [
+    'Fecha entrega','Mes','Producto','Cliente','Cantidad',
+    'Precio unitario cobrado','Moneda cobro',
+    'Total cobrado (moneda original)','Total cobrado (ARS equiv.)',
+    'Costo materiales (ARS equiv.)','Ganancia neta (ARS equiv.)','Margen %',
+    'Medio de pago','Precio acordado','Moneda acordada',
+    'USD/ARS aplicado'
+  ];
+
+  const rows = entregados.map(p => {
+    const qty       = p.cantidad || 1;
+    const cobMon    = p.monedaCobro || p.moneda || 'ARS';
+    const cobUnit   = p.cobrado || p.precio || 0;
+    const cobTotal  = cobUnit * qty;
+    const cobARS    = toARS(cobTotal, cobMon);
+
+    // Costo materiales
+    let costoMat = 0;
+    if (p.filMatId && p.gramosPorUnidad) {
+      const mat = getMateriales().find(m => m.id === p.filMatId);
+      if (mat) costoMat += toARS((mat.costo||0) / (mat.unidad==='kg'?1000:1) * p.gramosPorUnidad * qty, mat.moneda||'ARS');
+    }
+    (p.insumosVinculados||[]).forEach(ins => {
+      const mat = getMateriales().find(m => m.id === ins.materialId);
+      if (mat) costoMat += toARS((mat.costo||0) * ins.cantPorUnidad * qty, mat.moneda||'ARS');
+    });
+
+    const ganancia = cobARS - costoMat;
+    const margen   = cobARS > 0 ? Math.round((ganancia / cobARS) * 100) : 0;
+    const fechaRaw = p.fechaEntrega || p.creado?.split('T')[0] || '';
+    const mes      = fechaRaw.slice(0, 7);
+
+    return [
+      fechaRaw,
+      mes,
+      p.nombre || '',
+      p.cliente || '',
+      qty,
+      cobUnit,
+      cobMon,
+      Math.round(cobTotal * 100) / 100,
+      Math.round(cobARS),
+      Math.round(costoMat),
+      Math.round(ganancia),
+      margen,
+      p.medioPago || '',
+      p.precio || '',
+      p.moneda || 'ARS',
+      tc.usd,
+    ];
+  });
+
+  const NL = '\n';
+  const csv = [headers, ...rows]
+    .map(r => r.map(v => '"' + String(v).replace(/"/g, '""') + '"').join(','))
+    .join(NL);
+
+  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'adnlab-rentabilidad-' + new Date().toISOString().split('T')[0] + '.csv';
+  a.click();
+  toast('CSV de rentabilidad exportado ✓');
+}
+
+</script>
+</body>
+</html>
