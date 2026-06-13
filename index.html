@@ -19,6 +19,7 @@
     --purple: #534ab7; --purple-light: #eeedfe;
     --radius: 10px; --radius-lg: 14px;
   }
+  @keyframes spin { to { transform: rotate(360deg); } }
   @media (prefers-color-scheme: dark) {
     :root {
       --bg: #181816; --surface: #232320; --surface2: #2c2c29;
@@ -196,7 +197,7 @@
     <div class="nav-section">Sistema</div>
     <div class="nav-item" onclick="showSection('config')"><i class="ti ti-settings"></i> Configuración</div>
   </nav>
-  <div class="sidebar-footer">v4.0 · ADNlab</div>
+  <div class="sidebar-footer"><div id="sync-status" style="margin-bottom:6px;display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text3)"><i class="ti ti-cloud" style="font-size:14px"></i> Sin cambios</div>v4.0 · ADNlab</div>
 </aside>
 
 <main class="main">
@@ -449,7 +450,30 @@
     <div class="btn-row"><button class="btn btn-primary" onclick="guardarConfig()"><i class="ti ti-device-floppy"></i> Guardar</button></div>
   </div>
   <div class="card">
-    <div class="card-title">Datos</div>
+    <div class="card-title" style="display:flex;align-items:center;justify-content:space-between;">
+      Sincronizacion en la nube (GitHub Gist)
+      <span id="gist-status-badge" style="font-size:11px;padding:3px 10px;border-radius:99px;background:var(--surface2);color:var(--text3);">No configurado</span>
+    </div>
+    <p style="font-size:12px;color:var(--text3);margin-bottom:14px;line-height:1.6;">Conecta tu cuenta de GitHub para que todos tus datos se guarden en la nube y los puedas ver desde cualquier dispositivo. El token se guarda solo en este navegador.</p>
+    <div class="form-row cols-2">
+      <div class="field">
+        <label>Personal Access Token de GitHub</label>
+        <input type="password" id="cfg-gist-token" placeholder="ghp_..." autocomplete="off" />
+      </div>
+      <div class="field">
+        <label>Gist ID</label>
+        <input type="text" id="cfg-gist-id" placeholder="3feb32d91d182fea3aed..." />
+      </div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="guardarGistCreds()"><i class="ti ti-plug"></i> Conectar y sincronizar</button>
+      <button class="btn" onclick="forzarPull()"><i class="ti ti-cloud-download"></i> Traer datos de la nube</button>
+      <button class="btn" onclick="forzarPush()"><i class="ti ti-cloud-upload"></i> Subir datos locales</button>
+      <button class="btn btn-danger" onclick="desconectarGist()"><i class="ti ti-plug-x"></i> Desconectar</button>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">Backup local</div>
     <div class="btn-row">
       <button class="btn" onclick="exportarDatos()"><i class="ti ti-download"></i> Exportar JSON</button>
       <button class="btn" onclick="importarDatos()"><i class="ti ti-upload"></i> Importar JSON</button>
@@ -734,10 +758,90 @@
 // ═══════════════════════════════════════════════════════
 // STORAGE
 // ═══════════════════════════════════════════════════════
-const DB = {
+// ═══════════════════════════════════════════════════════
+// GIST SYNC — capa de datos con sincronizacion en la nube
+// ═══════════════════════════════════════════════════════
+const GIST_KEYS = ['pedidos','cotizaciones','materiales','movimientos','config','clientes','catalogo','tipo_cambio'];
+
+// LocalStorage — fuente de verdad local
+const LS = {
   get: k => JSON.parse(localStorage.getItem('rl3d_'+k)||'null'),
   set: (k,v) => localStorage.setItem('rl3d_'+k, JSON.stringify(v)),
 };
+
+// Credenciales Gist (guardadas solo en localStorage de este navegador)
+const getGistCreds = () => ({
+  token:  localStorage.getItem('rl3d_gist_token')||'',
+  gistId: localStorage.getItem('rl3d_gist_id')||'',
+});
+
+// Estado de sincronizacion
+let _syncPending = false;
+let _syncTimer   = null;
+let _syncStatus  = 'idle'; // idle | syncing | ok | error
+
+function setSyncStatus(s, msg) {
+  _syncStatus = s;
+  const el = document.getElementById('sync-status');
+  if (!el) return;
+  const icons = { idle:'ti-cloud', syncing:'ti-refresh', ok:'ti-cloud-check', error:'ti-cloud-x' };
+  const colors= { idle:'var(--text3)', syncing:'var(--blue)', ok:'var(--accent)', error:'var(--red)' };
+  el.innerHTML = '<i class="ti '+icons[s]+'" style="font-size:14px"></i> '+(msg||({idle:'Sin cambios',syncing:'Sincronizando...',ok:'Sincronizado',error:'Error de sync'}[s]));
+  el.style.color = colors[s];
+  if (s==='syncing') el.querySelector('i').style.animation='spin 1s linear infinite';
+}
+
+// Leer todo desde Gist y volcarlo a localStorage
+async function pullFromGist() {
+  const {token, gistId} = getGistCreds();
+  if (!token || !gistId) return false;
+  try {
+    setSyncStatus('syncing','Cargando datos...');
+    const r = await fetch('https://api.github.com/gists/'+gistId, {
+      headers: { Authorization: 'token '+token, Accept: 'application/vnd.github.v3+json' }
+    });
+    if (!r.ok) { setSyncStatus('error','Error al leer'); return false; }
+    const data = await r.json();
+    const file = data.files && data.files['adnlab-data.json'];
+    if (!file) { setSyncStatus('error','Archivo no encontrado en Gist'); return false; }
+    const parsed = JSON.parse(file.content||'{}');
+    GIST_KEYS.forEach(k => { if (parsed[k] !== undefined) LS.set(k, parsed[k]); });
+    setSyncStatus('ok','Datos cargados');
+    return true;
+  } catch(e) {
+    setSyncStatus('error','Sin conexion');
+    return false;
+  }
+}
+
+// Escribir todo localStorage al Gist (debounced 2s)
+async function pushToGist() {
+  const {token, gistId} = getGistCreds();
+  if (!token || !gistId) return;
+  clearTimeout(_syncTimer);
+  _syncTimer = setTimeout(async () => {
+    setSyncStatus('syncing');
+    const snapshot = {};
+    GIST_KEYS.forEach(k => { snapshot[k] = LS.get(k); });
+    try {
+      const r = await fetch('https://api.github.com/gists/'+gistId, {
+        method: 'PATCH',
+        headers: { Authorization: 'token '+token, Accept: 'application/vnd.github.v3+json', 'Content-Type': 'application/json' },
+        body: JSON.stringify({ files: { 'adnlab-data.json': { content: JSON.stringify(snapshot) } } })
+      });
+      setSyncStatus(r.ok ? 'ok' : 'error', r.ok ? 'Guardado en la nube' : 'Error al guardar');
+    } catch(e) {
+      setSyncStatus('error','Sin conexion');
+    }
+  }, 2000);
+}
+
+// DB publica — mismo API que antes, ahora dispara sync automatico
+const DB = {
+  get: k => LS.get(k),
+  set: (k,v) => { LS.set(k,v); pushToGist(); },
+};
+
 const getConfig     = () => DB.get('config') || {kgPla:0,kgPetg:0,kgAbs:0,hora:0,horaDiseno:0,margen:40,moneda:'ARS',negocio:'ADNlab',email:'',tel:'',ig:'',web:'',ciudad:'',pie:'Gracias por elegirnos'};
 const getPedidos    = () => DB.get('pedidos') || [];
 const getCots       = () => DB.get('cotizaciones') || [];
@@ -1907,6 +2011,27 @@ function cargarConfig() {
   s('cfg-pie',cfg.pie||''); s('cfg-kg-pla',cfg.kgPla); s('cfg-kg-petg',cfg.kgPetg);
   s('cfg-kg-abs',cfg.kgAbs); s('cfg-hora',cfg.hora); s('cfg-hora-diseno',cfg.horaDiseno);
   s('cfg-margen',cfg.margen); s('cfg-moneda',cfg.moneda);
+  // Gist creds
+  const creds = getGistCreds();
+  const tokEl = document.getElementById('cfg-gist-token');
+  const idEl  = document.getElementById('cfg-gist-id');
+  if (tokEl) tokEl.value = creds.token ? '••••••••••••••••' : '';
+  if (idEl)  idEl.value  = creds.gistId || '';
+  actualizarGistBadge();
+}
+function actualizarGistBadge() {
+  const {token, gistId} = getGistCreds();
+  const badge = document.getElementById('gist-status-badge');
+  if (!badge) return;
+  if (token && gistId) {
+    badge.textContent = 'Conectado';
+    badge.style.background = 'var(--accent-light)';
+    badge.style.color = 'var(--accent-dark)';
+  } else {
+    badge.textContent = 'No configurado';
+    badge.style.background = 'var(--surface2)';
+    badge.style.color = 'var(--text3)';
+  }
 }
 function guardarConfig() {
   const g=id=>parseFloat(document.getElementById(id)?.value)||0;
@@ -1967,6 +2092,7 @@ function confirmarBorrar() {
   document.getElementById('sb-brand').textContent=cfg.negocio||'ADNlab';
   renderDashboard();
   filtrarPedidos('todos');
+  initSync(); // Pull from Gist if configured
 })();
 
 // ═══════════════════════════════════════════════════════
@@ -2412,6 +2538,79 @@ function exportarCSVRentabilidad() {
   a.download = 'adnlab-rentabilidad-' + new Date().toISOString().split('T')[0] + '.csv';
   a.click();
   toast('CSV de rentabilidad exportado ✓');
+}
+
+// ═══════════════════════════════════════════════════════
+// GIST CREDENTIAL MANAGEMENT
+// ═══════════════════════════════════════════════════════
+async function guardarGistCreds() {
+  const tokEl = document.getElementById('cfg-gist-token');
+  const idEl  = document.getElementById('cfg-gist-id');
+  const token  = tokEl?.value?.trim();
+  const gistId = idEl?.value?.trim();
+  if (!token || token.startsWith('●') || token.startsWith('•')) {
+    // Token not changed, only save gistId if changed
+    if (gistId) localStorage.setItem('rl3d_gist_id', gistId);
+  } else {
+    if (!token.startsWith('ghp_') && !token.startsWith('github_pat_')) {
+      toast('El token debe empezar con ghp_ o github_pat_'); return;
+    }
+    localStorage.setItem('rl3d_gist_token', token);
+    if (tokEl) tokEl.value = '••••••••••••••••';
+  }
+  if (gistId) localStorage.setItem('rl3d_gist_id', gistId);
+  actualizarGistBadge();
+  toast('Conectando...');
+  const ok = await pullFromGist();
+  if (ok) {
+    toast('Conectado y datos sincronizados ✓', 3500);
+    renderDashboard();
+  }
+}
+
+async function forzarPull() {
+  const ok = await pullFromGist();
+  if (ok) { toast('Datos traidos de la nube ✓'); renderDashboard(); }
+  else toast('Error — verifica token y Gist ID');
+}
+
+async function forzarPush() {
+  setSyncStatus('syncing');
+  const {token, gistId} = getGistCreds();
+  if (!token || !gistId) { toast('Configurar token y Gist ID primero'); return; }
+  const snapshot = {};
+  GIST_KEYS.forEach(k => { snapshot[k] = LS.get(k); });
+  try {
+    const r = await fetch('https://api.github.com/gists/'+gistId, {
+      method: 'PATCH',
+      headers: { Authorization: 'token '+token, Accept: 'application/vnd.github.v3+json', 'Content-Type': 'application/json' },
+      body: JSON.stringify({ files: { 'adnlab-data.json': { content: JSON.stringify(snapshot) } } })
+    });
+    setSyncStatus(r.ok ? 'ok' : 'error', r.ok ? 'Subido a la nube' : 'Error al subir');
+    toast(r.ok ? 'Datos subidos a la nube ✓' : 'Error al subir');
+  } catch(e) {
+    setSyncStatus('error','Sin conexion');
+    toast('Sin conexion');
+  }
+}
+
+function desconectarGist() {
+  if (!confirm('Desconectar Gist? Los datos locales no se borran.')) return;
+  localStorage.removeItem('rl3d_gist_token');
+  localStorage.removeItem('rl3d_gist_id');
+  actualizarGistBadge();
+  setSyncStatus('idle');
+  toast('Gist desconectado');
+}
+
+// ── Pull al iniciar si hay credenciales configuradas ──
+async function initSync() {
+  const {token, gistId} = getGistCreds();
+  if (token && gistId) {
+    setSyncStatus('syncing', 'Cargando datos...');
+    const ok = await pullFromGist();
+    if (ok) renderDashboard();
+  }
 }
 
 </script>
