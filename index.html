@@ -455,6 +455,16 @@
     <div class="btn-row"><button class="btn btn-primary" onclick="guardarConfig()"><i class="ti ti-device-floppy"></i> Guardar</button></div>
   </div>
   <div class="card">
+    <div class="card-title">Condiciones de pago (aparece en los PDF)</div>
+    <div class="form-row">
+      <div class="field"><label>Leyenda de condiciones de pago</label><textarea id="cfg-condiciones-pago" placeholder="Ej: Para confirmar el pedido se requiere un anticipo del 50%..." style="min-height:60px;"></textarea></div>
+    </div>
+    <div class="form-row">
+      <div class="field"><label>Datos para transferencia (una línea por dato)</label><textarea id="cfg-datos-transferencia" placeholder="Banco&#10;Titular&#10;CTA&#10;CBU&#10;ALIAS&#10;CUIT/CUIL" style="min-height:120px;font-family:monospace;font-size:12.5px;"></textarea></div>
+    </div>
+    <div class="btn-row"><button class="btn btn-primary" onclick="guardarConfig()"><i class="ti ti-device-floppy"></i> Guardar</button></div>
+  </div>
+  <div class="card">
     <div class="card-title" style="display:flex;align-items:center;justify-content:space-between;">
       Sincronizacion en la nube (GitHub Gist)
       <span id="gist-status-badge" style="font-size:11px;padding:3px 10px;border-radius:99px;background:var(--surface2);color:var(--text3);">No configurado</span>
@@ -899,7 +909,9 @@ const DB = {
   set: (k,v) => { LS.set(k,v); pushToGist(); },
 };
 
-const getConfig     = () => DB.get('config') || {kgPla:0,kgPetg:0,kgAbs:0,hora:0,horaDiseno:0,margen:40,moneda:'ARS',negocio:'ADNlab',email:'',tel:'',ig:'',web:'',ciudad:'',pie:'Gracias por elegirnos'};
+const getConfig     = () => DB.get('config') || {kgPla:0,kgPetg:0,kgAbs:0,hora:0,horaDiseno:0,margen:40,moneda:'ARS',negocio:'ADNlab',email:'',tel:'',ig:'',web:'',ciudad:'',pie:'Gracias por elegirnos',
+  condicionesPago:'Para confirmar el pedido se requiere un anticipo del 50% del valor total de la cotización. El saldo restante se abona contra entrega.',
+  datosTransferencia:'Banco Supervielle\nMariana Carolina Sosa Varela\nCTA: CA ARS 007-6150604-2\nCBU: 0270007620061506040022\nALIAS: SOSAMARIANA.SUP\nCUIT/CUIL: 27956554611'};
 const getPedidos    = () => DB.get('pedidos') || [];
 const getCots       = () => DB.get('cotizaciones') || [];
 const getMateriales = () => DB.get('materiales') || [];
@@ -1386,6 +1398,44 @@ function exportarPDFById(id) {
   });
 }
 
+
+// ── Dibuja el bloque de condiciones de pago / datos de transferencia. Devuelve la nueva y. ──
+function dibujarCondicionesPago(doc, cfg, y, W, BLUE) {
+  const legend = (cfg.condicionesPago||'').trim();
+  const bank   = (cfg.datosTransferencia||'').trim();
+  if (!legend && !bank) return y;
+
+  const legendLines = legend ? doc.splitTextToSize(legend, W-24-12) : [];
+  const bankLines   = bank ? bank.split('\n').map(l=>l.trim()).filter(Boolean) : [];
+
+  let boxH = 6;
+  if (legendLines.length) boxH += legendLines.length*4.3 + 3;
+  if (bankLines.length)   boxH += 5 + bankLines.length*4.2;
+  boxH += 4;
+
+  y += 4;
+  doc.setFillColor(250,249,246);
+  doc.roundedRect(12, y, W-24, boxH, 2, 2, 'F');
+
+  let ty = y + 6;
+  doc.setFont('helvetica','bold'); doc.setFontSize(7.5); doc.setTextColor(...BLUE);
+  doc.text('CONDICIONES DE PAGO', 18, ty);
+  ty += 5;
+  doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(70,70,67);
+  legendLines.forEach(line => { doc.text(line, 18, ty, {maxWidth: W-36}); ty += 4.3; });
+
+  if (bankLines.length) {
+    ty += 1.5;
+    doc.setFont('helvetica','bold'); doc.setFontSize(7.5); doc.setTextColor(...BLUE);
+    doc.text('DATOS PARA TRANSFERENCIA', 18, ty);
+    ty += 5;
+    doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(70,70,67);
+    bankLines.forEach(line => { doc.text(line, 18, ty); ty += 4.2; });
+  }
+
+  return y + boxH;
+}
+
 function generarPDF(d) {
   const cfg = getConfig();
   const { jsPDF } = window.jspdf;
@@ -1480,6 +1530,8 @@ function generarPDF(d) {
     doc.text(`Total ${d.unidades} unidades`,116,y+5);
     doc.setFontSize(11); doc.text(fmt(finalP*d.unidades,mon),192,y+9,{align:'right'});
   }
+
+  y = dibujarCondicionesPago(doc, cfg, y, W, BLUE);
 
   doc.setFillColor(240,240,237); doc.rect(0,H-22,W,22,'F');
   doc.setTextColor(130,130,125); doc.setFontSize(8); doc.setFont('helvetica','normal');
@@ -2069,6 +2121,7 @@ function cargarConfig() {
   s('cfg-negocio',cfg.negocio); s('cfg-email',cfg.email||''); s('cfg-tel',cfg.tel||'');
   s('cfg-ig',cfg.ig||''); s('cfg-web',cfg.web||''); s('cfg-ciudad',cfg.ciudad||'');
   s('cfg-pie',cfg.pie||''); s('cfg-kg-pla',cfg.kgPla); s('cfg-kg-petg',cfg.kgPetg);
+  s('cfg-condiciones-pago',cfg.condicionesPago||''); s('cfg-datos-transferencia',cfg.datosTransferencia||'');
   s('cfg-kg-abs',cfg.kgAbs); s('cfg-hora',cfg.hora); s('cfg-hora-diseno',cfg.horaDiseno);
   s('cfg-margen',cfg.margen); s('cfg-moneda',cfg.moneda);
   // Gist creds
@@ -2096,7 +2149,7 @@ function actualizarGistBadge() {
 function guardarConfig() {
   const g=id=>parseFloat(document.getElementById(id)?.value)||0;
   const t=id=>document.getElementById(id)?.value||'';
-  const cfg={kgPla:g('cfg-kg-pla'),kgPetg:g('cfg-kg-petg'),kgAbs:g('cfg-kg-abs'),hora:g('cfg-hora'),horaDiseno:g('cfg-hora-diseno'),margen:g('cfg-margen'),moneda:t('cfg-moneda'),negocio:t('cfg-negocio')||'ADNlab',email:t('cfg-email'),tel:t('cfg-tel'),ig:t('cfg-ig'),web:t('cfg-web'),ciudad:t('cfg-ciudad'),pie:t('cfg-pie')};
+  const cfg={kgPla:g('cfg-kg-pla'),kgPetg:g('cfg-kg-petg'),kgAbs:g('cfg-kg-abs'),hora:g('cfg-hora'),horaDiseno:g('cfg-hora-diseno'),margen:g('cfg-margen'),moneda:t('cfg-moneda'),negocio:t('cfg-negocio')||'ADNlab',email:t('cfg-email'),tel:t('cfg-tel'),ig:t('cfg-ig'),web:t('cfg-web'),ciudad:t('cfg-ciudad'),pie:t('cfg-pie'),condicionesPago:t('cfg-condiciones-pago'),datosTransferencia:t('cfg-datos-transferencia')};
   DB.set('config',cfg);
   document.getElementById('q-margen').value=cfg.margen;
   document.getElementById('q-moneda').value=cfg.moneda;
@@ -2935,6 +2988,8 @@ function generarPDFCliente(cc) {
     doc.setFontSize(16); doc.text(fmt(totals[mon],mon),W-18,y+11,{align:'right'});
     y+=19;
   });
+
+  y = dibujarCondicionesPago(doc, cfg, y, W, BLUE);
 
   // Footer
   doc.setFillColor(240,240,237); doc.rect(0,H-22,W,22,'F');
