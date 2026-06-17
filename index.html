@@ -23,6 +23,11 @@
     --radius: 10px; --radius-lg: 14px;
   }
   @keyframes spin { to { transform: rotate(360deg); } }
+  .prod-thumb { width: 44px; height: 44px; border-radius: 8px; object-fit: cover; background: var(--surface2); flex-shrink: 0; }
+  .prod-thumb-placeholder { width: 44px; height: 44px; border-radius: 8px; background: var(--surface2); display:flex; align-items:center; justify-content:center; color: var(--text3); flex-shrink: 0; }
+  .badge-disponible { background: var(--accent-light); color: var(--accent-dark); }
+  .badge-agotado { background: var(--red-light); color: var(--red); }
+  .badge-pedido { background: var(--amber-light); color: var(--amber); }
   @media (prefers-color-scheme: dark) {
     :root {
       --bg: #181816; --surface: #232320; --surface2: #2c2c29;
@@ -199,6 +204,7 @@
     <div class="nav-item" onclick="showSection('catalogo')"><i class="ti ti-template"></i> Catálogo</div>
     <div class="nav-item" onclick="showSection('clientes')"><i class="ti ti-users"></i> Clientes</div>
     <div class="nav-item" onclick="showSection('rentabilidad')"><i class="ti ti-chart-bar"></i> Rentabilidad</div>
+    <div class="nav-item" onclick="showSection('tienda')"><i class="ti ti-shopping-cart"></i> Tienda Online</div>
     <div class="nav-section">Sistema</div>
     <div class="nav-item" onclick="showSection('config')"><i class="ti ti-settings"></i> Configuración</div>
   </nav>
@@ -539,6 +545,52 @@
   </div>
 </div>
 
+
+<!-- ══ TIENDA ONLINE ══ -->
+<div class="section" id="sec-tienda">
+  <div class="page-header">
+    <div class="page-header-left"><div class="page-title">Tienda Online</div><div class="page-sub">Catálogo público — se publica en tu sitio de ventas separado</div></div>
+    <button class="btn btn-primary" onclick="abrirModalProductoTienda()"><i class="ti ti-plus"></i> Nuevo producto</button>
+  </div>
+
+  <div class="card">
+    <div class="card-title" style="display:flex;align-items:center;justify-content:space-between;">
+      Publicación
+      <span id="tienda-status-badge" style="font-size:11px;padding:3px 10px;border-radius:99px;background:var(--surface2);color:var(--text3);">No publicado</span>
+    </div>
+    <p style="font-size:12px;color:var(--text3);margin-bottom:14px;line-height:1.6;">
+      Esto sube tu catálogo (productos, descripciones, precios e imágenes) a un Gist público que tu sitio de ventas lee directamente.
+      Usá el <strong>mismo token</strong> de Configuración (scope <code>gist</code>) pero un <strong>Gist distinto</strong> — nunca el mismo que tus datos privados.
+    </p>
+    <div class="form-row cols-3">
+      <div class="field"><label>Usuario de GitHub</label><input type="text" id="tnd-gh-user" placeholder="tuusuario" /></div>
+      <div class="field"><label>Gist ID público de la tienda</label><input type="text" id="tnd-gist-id" placeholder="a1b2c3d4e5f6..." /></div>
+      <div class="field"><label>WhatsApp (con código de país, solo números)</label><input type="text" id="tnd-whatsapp" placeholder="5491122334455" /></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="guardarTiendaConfig()"><i class="ti ti-device-floppy"></i> Guardar configuración</button>
+      <button class="btn" onclick="publicarTienda()"><i class="ti ti-cloud-upload"></i> Publicar tienda</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Plan de cuotas</div>
+    <div class="form-row cols-2">
+      <div class="field" style="display:flex;align-items:center;gap:8px;flex-direction:row;">
+        <input type="checkbox" id="tnd-cuotas-on" style="width:auto;" />
+        <label style="margin:0;">Mostrar opción "Pagar en cuotas" en la tienda</label>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="field"><label>Descripción del plan (se muestra al cliente)</label><textarea id="tnd-cuotas-texto" placeholder="Ej: 3 cuotas mensuales sin interés por transferencia. Coordinamos por WhatsApp." style="min-height:70px;"></textarea></div>
+    </div>
+    <p class="text-sm text-muted">Tus datos de transferencia (Configuración → Condiciones de pago) se muestran automáticamente junto con este texto.</p>
+    <div class="btn-row"><button class="btn btn-primary" onclick="guardarTiendaConfig()"><i class="ti ti-device-floppy"></i> Guardar</button></div>
+  </div>
+
+  <div class="card" style="padding:0;overflow:hidden;"><div id="tabla-tienda-productos"></div></div>
+</div>
+
 <!-- ══ CATÁLOGO ══ -->
 <div class="section" id="sec-catalogo">
   <div class="page-header">
@@ -739,35 +791,87 @@
 
 <!-- ══ MODAL CATÁLOGO ══ -->
 <div class="modal-bg" id="modal-catalogo">
-  <div class="modal">
+  <div class="modal modal-lg">
     <div class="modal-header">
       <div class="modal-title" id="modal-cat-title">Nuevo producto tipo</div>
       <button class="modal-close" onclick="cerrarModal('modal-catalogo')"><i class="ti ti-x"></i></button>
     </div>
     <input type="hidden" id="mcat-id" />
+
     <div class="form-row cols-2">
-      <div class="field"><label>Nombre del producto</label><input type="text" id="mcat-nombre" placeholder="Maceta hexagonal 15cm" /></div>
+      <div class="field"><label>Nombre del producto</label><input type="text" id="mcat-nombre" placeholder="Velador completo" /></div>
       <div class="field"><label>Categoría</label><input type="text" id="mcat-categoria" placeholder="Decoración, Industrial, etc." /></div>
     </div>
-    <div class="form-row cols-3">
-      <div class="field"><label>Gramos filamento</label><input type="number" id="mcat-gramos" placeholder="0" min="0" step="1" /></div>
-      <div class="field"><label>Costo por kg</label><input type="number" id="mcat-costo-kg" placeholder="0" min="0" step="0.01" /></div>
-      <div class="field"><label>Horas impresión</label><input type="number" id="mcat-horas" placeholder="0" min="0" step="0.5" /></div>
+
+    <div class="form-row">
+      <div class="field"><label>Foto de referencia (opcional)</label></div>
     </div>
-    <div class="form-row cols-3">
-      <div class="field"><label>Costo hora máquina</label><input type="number" id="mcat-costo-hora" placeholder="0" min="0" step="0.01" /></div>
-      <div class="field"><label>Horas diseño/prep</label><input type="number" id="mcat-horas-diseno" placeholder="0" min="0" step="0.25" /></div>
-      <div class="field"><label>Costo hora diseño</label><input type="number" id="mcat-costo-diseno" placeholder="0" min="0" step="0.01" /></div>
-    </div>
-    <div class="form-row cols-3">
-      <div class="field"><label>Post-proceso</label><input type="number" id="mcat-post" placeholder="0" min="0" step="0.01" /></div>
-      <div class="field"><label>Insumos extra</label><input type="number" id="mcat-insumos" placeholder="0" min="0" step="0.01" /></div>
-      <div class="field"><label>Margen (%)</label><input type="number" id="mcat-margen" placeholder="40" min="0" /></div>
-    </div>
-    <div class="form-row cols-2">
-      <div class="field"><label>Moneda</label>
-        <select id="mcat-moneda"><option value="ARS">ARS</option><option value="USD">USD</option><option value="EUR">EUR</option></select>
+    <div class="flex-gap" style="margin-bottom:12px;align-items:flex-start;">
+      <div id="mcat-foto-preview" style="width:90px;height:90px;border-radius:var(--radius);background:var(--surface2);border:0.5px solid var(--border);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;">
+        <i class="ti ti-photo" style="font-size:24px;color:var(--text3);"></i>
       </div>
+      <div style="flex:1;">
+        <input type="file" id="mcat-foto-file" accept="image/*" onchange="onFotoCatalogoSeleccionada(event)" />
+        <div class="text-sm text-muted mt-4">Se guarda junto al producto. Recomendado: una foto cuadrada, menos de 1MB.</div>
+        <button class="btn btn-sm mt-4" id="mcat-foto-quitar" style="display:none" onclick="quitarFotoCatalogo()"><i class="ti ti-trash"></i> Quitar foto</button>
+      </div>
+    </div>
+
+    <hr/>
+
+    <div class="form-row cols-2" style="margin-bottom:6px;">
+      <div class="field">
+        <label>Tipo de producto</label>
+        <select id="mcat-tipo" onchange="toggleTipoCatalogo()">
+          <option value="simple">Simple — parámetros propios</option>
+          <option value="compuesto">Compuesto — combinar varias cotizaciones</option>
+        </select>
+      </div>
+      <div class="field"><label>Margen ya incluido en c/cotización combinada</label>
+        <div class="text-sm text-muted mt-4" style="padding-top:8px;">El precio compuesto suma el precio final (con margen) de cada cotización elegida.</div>
+      </div>
+    </div>
+
+    <!-- ═══ MODO SIMPLE ═══ -->
+    <div id="mcat-modo-simple">
+      <div class="form-row cols-3">
+        <div class="field"><label>Gramos filamento</label><input type="number" id="mcat-gramos" placeholder="0" min="0" step="1" /></div>
+        <div class="field"><label>Costo por kg</label><input type="number" id="mcat-costo-kg" placeholder="0" min="0" step="0.01" /></div>
+        <div class="field"><label>Horas impresión</label><input type="number" id="mcat-horas" placeholder="0" min="0" step="0.5" /></div>
+      </div>
+      <div class="form-row cols-3">
+        <div class="field"><label>Costo hora máquina</label><input type="number" id="mcat-costo-hora" placeholder="0" min="0" step="0.01" /></div>
+        <div class="field"><label>Horas diseño/prep</label><input type="number" id="mcat-horas-diseno" placeholder="0" min="0" step="0.25" /></div>
+        <div class="field"><label>Costo hora diseño</label><input type="number" id="mcat-costo-diseno" placeholder="0" min="0" step="0.01" /></div>
+      </div>
+      <div class="form-row cols-3">
+        <div class="field"><label>Post-proceso</label><input type="number" id="mcat-post" placeholder="0" min="0" step="0.01" /></div>
+        <div class="field"><label>Insumos extra</label><input type="number" id="mcat-insumos" placeholder="0" min="0" step="0.01" /></div>
+        <div class="field"><label>Margen (%)</label><input type="number" id="mcat-margen" placeholder="40" min="0" /></div>
+      </div>
+      <div class="form-row cols-2">
+        <div class="field"><label>Moneda</label>
+          <select id="mcat-moneda"><option value="ARS">ARS</option><option value="USD">USD</option><option value="EUR">EUR</option></select>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ MODO COMPUESTO ═══ -->
+    <div id="mcat-modo-compuesto" style="display:none;">
+      <div class="form-row cols-2">
+        <div class="field" style="grid-column:span 2;">
+          <label>Agregar cotización del cotizador personal</label>
+          <select id="mcat-comp-select"><option value="">— Elegí una cotización guardada —</option></select>
+        </div>
+      </div>
+      <div class="btn-row" style="margin-top:0;margin-bottom:14px;">
+        <button class="btn" onclick="agregarComponenteCatalogo()"><i class="ti ti-plus"></i> Agregar al producto</button>
+      </div>
+      <div id="mcat-componentes-tabla"></div>
+      <div id="mcat-componentes-total" class="result-box" style="margin-top:12px;display:none;"></div>
+    </div>
+
+    <div class="form-row mt-16">
       <div class="field"><label>Descripción breve</label><input type="text" id="mcat-desc" placeholder="Para el PDF del cliente" /></div>
     </div>
     <div class="btn-row">
@@ -816,6 +920,55 @@
     </div>
   </div>
 </div>
+
+<!-- ══ MODAL PRODUCTO TIENDA ══ -->
+<div class="modal-bg" id="modal-producto-tienda">
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <div class="modal-title" id="modal-pt-title">Nuevo producto</div>
+      <button class="modal-close" onclick="cerrarModal('modal-producto-tienda')"><i class="ti ti-x"></i></button>
+    </div>
+    <input type="hidden" id="pt-id" />
+    <div class="form-row cols-2">
+      <div class="field"><label>Nombre del producto</label><input type="text" id="pt-nombre" placeholder="Maceta hexagonal 15cm" /></div>
+      <div class="field"><label>Categoría</label><input type="text" id="pt-categoria" placeholder="Decoración, Llaveros, Souvenirs..." /></div>
+    </div>
+    <div class="form-row">
+      <div class="field"><label>Descripción (visible para el cliente)</label><textarea id="pt-descripcion" placeholder="Descripción corta y atractiva del producto..." style="min-height:70px;"></textarea></div>
+    </div>
+    <div class="form-row cols-3">
+      <div class="field"><label>Precio</label><input type="number" id="pt-precio" placeholder="0" min="0" step="0.01" /></div>
+      <div class="field"><label>Moneda</label>
+        <select id="pt-moneda"><option value="ARS">ARS</option><option value="USD">USD</option><option value="EUR">EUR</option></select>
+      </div>
+      <div class="field"><label>Stock</label>
+        <select id="pt-stock">
+          <option value="disponible">Disponible</option>
+          <option value="a_pedido">A pedido</option>
+          <option value="agotado">Agotado</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="field">
+        <label>URL de la imagen</label>
+        <input type="text" id="pt-imagen" placeholder="https://tuusuario.github.io/adnlab-tienda/productos/foto.jpg" oninput="previewImagenPT()" />
+        <p class="text-sm text-muted mt-4">Subí la foto a tu repo de la tienda (carpeta "productos") y pegá aquí el link directo. <span id="pt-img-preview"></span></p>
+      </div>
+    </div>
+    <div class="form-row cols-2">
+      <div class="field"><label>Link de Mercado Pago (opcional)</label><input type="text" id="pt-mp-link" placeholder="https://mpago.la/..." /></div>
+      <div class="field" style="display:flex;align-items:center;gap:8px;flex-direction:row;padding-top:22px;">
+        <input type="checkbox" id="pt-destacado" style="width:auto;" />
+        <label style="margin:0;">Producto destacado</label>
+      </div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="guardarProductoTienda()"><i class="ti ti-device-floppy"></i> Guardar</button>
+      <button class="btn" onclick="cerrarModal('modal-producto-tienda')">Cancelar</button>
+    </div>
+  </div>
+</div>
 <div class="toast" id="toast"></div>
 
 <script>
@@ -828,7 +981,7 @@ const ADNLAB_LOGO = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAfQAAAEzCAYAA
 // ═══════════════════════════════════════════════════════
 // GIST SYNC — capa de datos con sincronizacion en la nube
 // ═══════════════════════════════════════════════════════
-const GIST_KEYS = ['pedidos','cotizaciones','materiales','movimientos','config','clientes','catalogo','tipo_cambio','cotizaciones_cliente'];
+const GIST_KEYS = ['pedidos','cotizaciones','materiales','movimientos','config','clientes','catalogo','tipo_cambio','cotizaciones_cliente','tienda_productos','tienda_config'];
 
 // LocalStorage — fuente de verdad local
 const LS = {
@@ -1006,6 +1159,7 @@ function showSection(name) {
   if (name==='clientes')    renderClientes();
   if (name==='rentabilidad') renderRentabilidad();
   if (name==='catalogo')    renderCatalogo();
+  if (name==='tienda')      { renderTiendaProductos(); cargarTiendaConfig(); }
   if (name==='config')      cargarConfig();
 }
 
@@ -2440,9 +2594,29 @@ function renderRentabilidad() {
 }
 
 // ═══════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════
 // CATÁLOGO
 // ═══════════════════════════════════════════════════════
 const getCatalogo = () => DB.get('catalogo') || [];
+
+let _catComponentes = []; // [{ cotId, nombre, precioUnitario, moneda }]
+let _catFotoBase64   = null; // foto pendiente de guardar (data URL) o null
+let _catFotoLimpiada = false; // true si el usuario quitó la foto existente
+
+function calcularPrecioCatalogo(p) {
+  if (p.tipo === 'compuesto') {
+    const totals = {};
+    (p.componentes||[]).forEach(c => { totals[c.moneda] = (totals[c.moneda]||0) + c.precioUnitario; });
+    return totals;
+  }
+  const costo = (p.gramos/1000)*(p.costoKg||0) + p.horas*(p.costoHora||0) + p.horasDiseno*(p.costoDiseno||0) + (p.post||0) + (p.insumos||0);
+  const precio = costo*(1+(p.margen||40)/100);
+  return { [p.moneda||'ARS']: precio };
+}
+
+function fmtPreciosCatalogo(totals) {
+  return Object.entries(totals).map(([mon,val])=>fmt(val,mon)).join(' + ') || '—';
+}
 
 function renderCatalogo() {
   const busq = (document.getElementById('cat-buscar')?.value||'').toLowerCase();
@@ -2454,64 +2628,186 @@ function renderCatalogo() {
     el.innerHTML='<div class="empty" style="grid-column:1/-1"><i class="ti ti-template"></i><p>Sin productos en el catálogo. Agregá productos tipo para cotizar rápido.</p></div>'; return;
   }
   el.innerHTML=items.map(p=>{
-    const costo=(p.gramos/1000)*(p.costoKg||0)+p.horas*(p.costoHora||0)+p.horasDiseno*(p.costoDiseno||0)+(p.post||0)+(p.insumos||0);
-    const precio=costo*(1+(p.margen||40)/100);
+    const precios = calcularPrecioCatalogo(p);
+    const esCompuesto = p.tipo === 'compuesto';
+    const fotoHtml = p.foto
+      ? `<img src="${p.foto}" style="width:100%;height:100%;object-fit:cover;border-radius:var(--radius);" />`
+      : '';
     return `<div class="cat-card" onclick="cargarCatalogoEnCotizador('${p.id}')">
       <div class="cat-card-actions" onclick="event.stopPropagation()">
         <button class="btn btn-sm" onclick="abrirModalCatalogo('${p.id}')"><i class="ti ti-pencil"></i></button>
         <button class="btn btn-sm btn-danger" onclick="borrarCatalogo('${p.id}')"><i class="ti ti-trash"></i></button>
       </div>
-      ${p.categoria?`<div class="text-sm text-muted" style="margin-bottom:4px;">${p.categoria}</div>`:''}
+      ${fotoHtml?`<div style="width:100%;aspect-ratio:1;margin-bottom:10px;border-radius:var(--radius);overflow:hidden;">${fotoHtml}</div>`:''}
+      ${p.categoria?`<div class="text-sm text-muted" style="margin-bottom:4px;">${p.categoria}${esCompuesto?' · <span class="tag">Compuesto</span>':''}</div>`:(esCompuesto?'<div class="text-sm text-muted" style="margin-bottom:4px;"><span class="tag">Compuesto</span></div>':'')}
       <div class="cat-card-name">${p.nombre}</div>
-      <div class="cat-card-price">${fmt(precio, p.moneda||'ARS')}</div>
+      <div class="cat-card-price">${fmtPreciosCatalogo(precios)}</div>
       <div class="cat-card-meta">
-        ${p.gramos>0?`${p.gramos}g filamento<br>`:''}
-        ${p.horas>0?`${p.horas}hs impresión<br>`:''}
-        Margen: ${p.margen||40}%
+        ${esCompuesto
+          ? (p.componentes||[]).map(c=>`${c.nombre}`).join(' + ')
+          : `${p.gramos>0?`${p.gramos}g filamento<br>`:''}${p.horas>0?`${p.horas}hs impresión<br>`:''}Margen: ${p.margen||40}%`}
       </div>
       <div style="margin-top:10px;font-size:11px;color:var(--accent-dark);font-weight:500;">← Clic para cotizar</div>
     </div>`;
   }).join('');
 }
 
+function toggleTipoCatalogo() {
+  const tipo = document.getElementById('mcat-tipo').value;
+  document.getElementById('mcat-modo-simple').style.display    = tipo==='simple' ? 'block' : 'none';
+  document.getElementById('mcat-modo-compuesto').style.display = tipo==='compuesto' ? 'block' : 'none';
+  if (tipo==='compuesto') poblarSelectComponentes();
+}
+
+function poblarSelectComponentes() {
+  const sel = document.getElementById('mcat-comp-select');
+  sel.innerHTML = '<option value="">— Elegí una cotización guardada —</option>';
+  getCots().forEach(c=>{
+    const o = document.createElement('option');
+    o.value = c.id;
+    o.textContent = `${c.nombre} — ${fmt(c.precioUnitario,c.moneda)}`;
+    sel.appendChild(o);
+  });
+}
+
+function agregarComponenteCatalogo() {
+  const cotId = document.getElementById('mcat-comp-select').value;
+  if (!cotId) { toast('Elegí una cotización'); return; }
+  const cot = getCots().find(x=>x.id===cotId);
+  if (!cot) return;
+  if (_catComponentes.find(c=>c.cotId===cotId)) { toast('Ya está agregada esa cotización'); return; }
+  _catComponentes.push({ cotId, nombre: cot.nombre, precioUnitario: cot.precioUnitario, moneda: cot.moneda });
+  document.getElementById('mcat-comp-select').value = '';
+  renderComponentesCatalogo();
+}
+
+function quitarComponenteCatalogo(idx) {
+  _catComponentes.splice(idx,1);
+  renderComponentesCatalogo();
+}
+
+function renderComponentesCatalogo() {
+  const el = document.getElementById('mcat-componentes-tabla');
+  const totalEl = document.getElementById('mcat-componentes-total');
+  if (!_catComponentes.length) {
+    el.innerHTML = '<div class="empty" style="padding:20px"><i class="ti ti-puzzle"></i><p>Agregá las cotizaciones que componen este producto (ej: base + pantalla)</p></div>';
+    totalEl.style.display = 'none';
+    return;
+  }
+  el.innerHTML = `<div class="table-wrap"><table>
+    <thead><tr><th>Componente</th><th>Precio</th><th></th></tr></thead>
+    <tbody>${_catComponentes.map((c,i)=>`<tr>
+      <td><strong>${c.nombre}</strong></td>
+      <td>${fmt(c.precioUnitario,c.moneda)}</td>
+      <td><button class="btn btn-sm btn-danger" onclick="quitarComponenteCatalogo(${i})"><i class="ti ti-x"></i></button></td>
+    </tr>`).join('')}</tbody>
+  </table></div>`;
+
+  const totals = {};
+  _catComponentes.forEach(c => { totals[c.moneda] = (totals[c.moneda]||0) + c.precioUnitario; });
+  totalEl.style.display = 'block';
+  totalEl.innerHTML = `<div class="result-label">Precio total del producto compuesto</div>
+    ${Object.entries(totals).map(([mon,val])=>`<div class="result-main" style="font-size:20px;">${fmt(val,mon)}</div>`).join('')}`;
+}
+
+// ── Foto del producto de catálogo ──
+function onFotoCatalogoSeleccionada(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  if (file.size > 2*1024*1024) { toast('La imagen es muy pesada (máx. 2MB)'); e.target.value=''; return; }
+  const reader = new FileReader();
+  reader.onload = () => {
+    _catFotoBase64 = reader.result;
+    _catFotoLimpiada = false;
+    mostrarPreviewFotoCatalogo(_catFotoBase64);
+  };
+  reader.readAsDataURL(file);
+}
+
+function quitarFotoCatalogo() {
+  _catFotoBase64 = null;
+  _catFotoLimpiada = true;
+  document.getElementById('mcat-foto-file').value = '';
+  mostrarPreviewFotoCatalogo(null);
+}
+
+function mostrarPreviewFotoCatalogo(src) {
+  const prev = document.getElementById('mcat-foto-preview');
+  const btnQuitar = document.getElementById('mcat-foto-quitar');
+  if (src) {
+    prev.innerHTML = `<img src="${src}" style="width:100%;height:100%;object-fit:cover;" />`;
+    btnQuitar.style.display = 'inline-flex';
+  } else {
+    prev.innerHTML = '<i class="ti ti-photo" style="font-size:24px;color:var(--text3);"></i>';
+    btnQuitar.style.display = 'none';
+  }
+}
+
 function abrirModalCatalogo(id) {
   document.getElementById('modal-cat-title').textContent = id?'Editar producto tipo':'Nuevo producto tipo';
   document.getElementById('mcat-id').value=id||'';
   const cfg=getConfig();
+  _catComponentes = [];
+  _catFotoBase64 = null;
+  _catFotoLimpiada = false;
+
   if (id) {
     const p=getCatalogo().find(x=>x.id===id); if(!p) return;
     const s=(eid,v)=>{const el=document.getElementById(eid);if(el)el.value=v??'';};
-    s('mcat-nombre',p.nombre); s('mcat-categoria',p.categoria||''); s('mcat-gramos',p.gramos||0);
+    s('mcat-nombre',p.nombre); s('mcat-categoria',p.categoria||'');
+    s('mcat-tipo', p.tipo||'simple');
+    s('mcat-gramos',p.gramos||0);
     s('mcat-costo-kg',p.costoKg||0); s('mcat-horas',p.horas||0); s('mcat-costo-hora',p.costoHora||0);
     s('mcat-horas-diseno',p.horasDiseno||0); s('mcat-costo-diseno',p.costoDiseno||0);
     s('mcat-post',p.post||0); s('mcat-insumos',p.insumos||0); s('mcat-margen',p.margen||40);
     s('mcat-moneda',p.moneda||'ARS'); s('mcat-desc',p.descripcion||'');
+    _catComponentes = JSON.parse(JSON.stringify(p.componentes||[]));
+    mostrarPreviewFotoCatalogo(p.foto||null);
   } else {
     ['mcat-nombre','mcat-categoria','mcat-gramos','mcat-costo-kg','mcat-horas','mcat-costo-hora','mcat-horas-diseno','mcat-costo-diseno','mcat-post','mcat-insumos','mcat-desc'].forEach(eid=>{const el=document.getElementById(eid);if(el)el.value='';});
+    document.getElementById('mcat-tipo').value='simple';
     document.getElementById('mcat-margen').value=cfg.margen||40;
     document.getElementById('mcat-moneda').value=cfg.moneda||'ARS';
     if (cfg.hora) document.getElementById('mcat-costo-hora').value=cfg.hora;
     if (cfg.horaDiseno) document.getElementById('mcat-costo-diseno').value=cfg.horaDiseno;
     if (cfg.kgPla) document.getElementById('mcat-costo-kg').value=cfg.kgPla;
+    document.getElementById('mcat-foto-file').value = '';
+    mostrarPreviewFotoCatalogo(null);
   }
+  toggleTipoCatalogo();
+  renderComponentesCatalogo();
   document.getElementById('modal-catalogo').classList.add('open');
 }
 
 function guardarCatalogo() {
   const nombre=document.getElementById('mcat-nombre').value.trim();
   if (!nombre) { toast('Completá el nombre'); return; }
+  const tipo = document.getElementById('mcat-tipo').value;
+  if (tipo==='compuesto' && !_catComponentes.length) { toast('Agregá al menos una cotización al producto compuesto'); return; }
   const g=id=>parseFloat(document.getElementById(id)?.value)||0;
   const id=document.getElementById('mcat-id').value;
+  const existente = id ? getCatalogo().find(x=>x.id===id) : null;
+
+  // Resolver la foto: nueva subida > mantener existente > null si se quitó
+  let foto = null;
+  if (_catFotoBase64) foto = _catFotoBase64;
+  else if (!_catFotoLimpiada && existente) foto = existente.foto || null;
+
   const prod={
     id:id||uid(), nombre,
     categoria:document.getElementById('mcat-categoria').value,
+    tipo,
+    foto,
+    descripcion:document.getElementById('mcat-desc').value,
+    // Campos del modo simple (se guardan igual aunque sea compuesto, por si se cambia de tipo después)
     gramos:g('mcat-gramos'), costoKg:g('mcat-costo-kg'),
     horas:g('mcat-horas'), costoHora:g('mcat-costo-hora'),
     horasDiseno:g('mcat-horas-diseno'), costoDiseno:g('mcat-costo-diseno'),
     post:g('mcat-post'), insumos:g('mcat-insumos'),
     margen:g('mcat-margen')||40,
     moneda:document.getElementById('mcat-moneda').value,
-    descripcion:document.getElementById('mcat-desc').value,
+    // Campos del modo compuesto
+    componentes: JSON.parse(JSON.stringify(_catComponentes)),
   };
   const cat=getCatalogo();
   const idx=cat.findIndex(x=>x.id===prod.id);
@@ -2531,6 +2827,28 @@ function borrarCatalogo(id) {
 
 function cargarCatalogoEnCotizador(id) {
   const p=getCatalogo().find(x=>x.id===id); if(!p) return;
+
+  if (p.tipo === 'compuesto') {
+    // Un producto compuesto se carga directo como Cotización Cliente (no tiene sentido
+    // en el cotizador personal, que trabaja con un solo set de parámetros físicos).
+    showSection('cotizacionclientes');
+    setTimeout(()=>{
+      abrirModalCotCliente();
+      setTimeout(()=>{
+        document.getElementById('cc-cliente').value = '';
+        (p.componentes||[]).forEach(c=>{
+          const cot = getCots().find(x=>x.id===c.cotId);
+          if (!cot) return;
+          const existente = _ccItems.find(it=>it.cotId===c.cotId);
+          if (!existente) _ccItems.push({ cotId:c.cotId, nombre:cot.nombre, costoUnitario:cot.precioUnitario, moneda:cot.moneda, cantidad:1 });
+        });
+        renderCCItems();
+        toast(`"${p.nombre}" cargado — completá el cliente y la cantidad ✓`, 3500);
+      }, 80);
+    }, 80);
+    return;
+  }
+
   showSection('cotizador');
   setTimeout(()=>{
     const s=(eid,v)=>{const el=document.getElementById(eid);if(el)el.value=v??'';};
@@ -3000,6 +3318,184 @@ function generarPDFCliente(cc) {
 
   doc.save(`cotizacion-cliente-${(cc.cliente||'cliente').replace(/\s+/g,'-').toLowerCase()}-${new Date().toISOString().split('T')[0]}.pdf`);
   toast('PDF generado ✓');
+}
+
+// ═══════════════════════════════════════════════════════
+// TIENDA ONLINE
+// ═══════════════════════════════════════════════════════
+const getTiendaProductos = () => DB.get('tienda_productos') || [];
+const getTiendaConfig    = () => DB.get('tienda_config') || { githubUser:'', tiendaGistId:'', whatsapp:'', cuotasHabilitado:false, cuotasTexto:'' };
+
+const stockLabelTienda = { disponible:['badge-disponible','Disponible'], a_pedido:['badge-pedido','A pedido'], agotado:['badge-agotado','Agotado'] };
+
+function cargarTiendaConfig() {
+  const tc = getTiendaConfig();
+  const s=(id,v)=>{const el=document.getElementById(id);if(el&&v!==undefined)el.value=v;};
+  s('tnd-gh-user', tc.githubUser||''); s('tnd-gist-id', tc.tiendaGistId||''); s('tnd-whatsapp', tc.whatsapp||'');
+  s('tnd-cuotas-texto', tc.cuotasTexto||'');
+  const chk = document.getElementById('tnd-cuotas-on');
+  if (chk) chk.checked = !!tc.cuotasHabilitado;
+  actualizarTiendaBadge();
+}
+
+function actualizarTiendaBadge() {
+  const tc = getTiendaConfig();
+  const badge = document.getElementById('tienda-status-badge');
+  if (!badge) return;
+  if (tc.githubUser && tc.tiendaGistId) {
+    badge.textContent = tc.ultimaPublicacion ? 'Publicado · '+fmtFecha(tc.ultimaPublicacion) : 'Configurado — falta publicar';
+    badge.style.background = tc.ultimaPublicacion ? 'var(--accent-light)' : 'var(--amber-light)';
+    badge.style.color = tc.ultimaPublicacion ? 'var(--accent-dark)' : 'var(--amber)';
+  } else {
+    badge.textContent = 'No configurado';
+    badge.style.background = 'var(--surface2)';
+    badge.style.color = 'var(--text3)';
+  }
+}
+
+function guardarTiendaConfig() {
+  const prev = getTiendaConfig();
+  const tc = {
+    ...prev,
+    githubUser:   document.getElementById('tnd-gh-user').value.trim(),
+    tiendaGistId: document.getElementById('tnd-gist-id').value.trim(),
+    whatsapp:     document.getElementById('tnd-whatsapp').value.trim().replace(/[^0-9]/g,''),
+    cuotasHabilitado: document.getElementById('tnd-cuotas-on').checked,
+    cuotasTexto:  document.getElementById('tnd-cuotas-texto').value,
+  };
+  DB.set('tienda_config', tc);
+  actualizarTiendaBadge();
+  toast('Configuración guardada ✓');
+}
+
+function renderTiendaProductos() {
+  const productos = getTiendaProductos();
+  const el = document.getElementById('tabla-tienda-productos');
+  if (!productos.length) {
+    el.innerHTML = '<div class="empty"><i class="ti ti-shopping-cart"></i><p>Sin productos en la tienda. Agregá el primero.</p></div>';
+    return;
+  }
+  el.innerHTML = `<div class="table-wrap"><table>
+    <thead><tr><th></th><th>Producto</th><th>Categoría</th><th>Precio</th><th>Stock</th><th>MP</th><th></th></tr></thead>
+    <tbody>${productos.map(p=>{
+      const [cls,label] = stockLabelTienda[p.stock]||stockLabelTienda.disponible;
+      return `<tr>
+        <td>${p.imagenUrl?`<img class="prod-thumb" src="${p.imagenUrl}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';" /><div class="prod-thumb-placeholder" style="display:none;"><i class="ti ti-photo"></i></div>`:`<div class="prod-thumb-placeholder"><i class="ti ti-photo"></i></div>`}</td>
+        <td><strong>${p.nombre}</strong>${p.destacado?' <span class="tag">★ Destacado</span>':''}${p.descripcion?`<div class="text-sm text-muted mt-4">${p.descripcion.slice(0,60)}${p.descripcion.length>60?'…':''}</div>`:''}</td>
+        <td class="text-sm">${p.categoria||'—'}</td>
+        <td><strong>${fmt(p.precio,p.moneda)}</strong></td>
+        <td><span class="badge ${cls}">${label}</span></td>
+        <td class="text-sm">${p.mpLink?`<i class="ti ti-check" style="color:var(--accent)"></i>`:`<span class="text-muted">—</span>`}</td>
+        <td><div class="flex-gap">
+          <button class="btn btn-sm" onclick="abrirModalProductoTienda('${p.id}')"><i class="ti ti-pencil"></i></button>
+          <button class="btn btn-sm btn-danger" onclick="borrarProductoTienda('${p.id}')"><i class="ti ti-trash"></i></button>
+        </div></td>
+      </tr>`;
+    }).join('')}</tbody>
+  </table></div>`;
+}
+
+function previewImagenPT() {
+  const url = document.getElementById('pt-imagen').value.trim();
+  const el = document.getElementById('pt-img-preview');
+  if (!url) { el.innerHTML=''; return; }
+  el.innerHTML = `<img src="${url}" style="height:32px;width:32px;object-fit:cover;border-radius:6px;vertical-align:middle;margin-left:6px;" onerror="this.style.display='none'" />`;
+}
+
+function abrirModalProductoTienda(id) {
+  document.getElementById('modal-pt-title').textContent = id?'Editar producto':'Nuevo producto';
+  document.getElementById('pt-id').value = id||'';
+  if (id) {
+    const p = getTiendaProductos().find(x=>x.id===id); if(!p) return;
+    const s=(eid,v)=>{const el=document.getElementById(eid);if(el)el.value=v??'';};
+    s('pt-nombre',p.nombre); s('pt-categoria',p.categoria||''); s('pt-descripcion',p.descripcion||'');
+    s('pt-precio',p.precio); s('pt-moneda',p.moneda||'ARS'); s('pt-stock',p.stock||'disponible');
+    s('pt-imagen',p.imagenUrl||''); s('pt-mp-link',p.mpLink||'');
+    document.getElementById('pt-destacado').checked = !!p.destacado;
+  } else {
+    ['pt-nombre','pt-categoria','pt-descripcion','pt-precio','pt-imagen','pt-mp-link'].forEach(eid=>{const el=document.getElementById(eid);if(el)el.value='';});
+    document.getElementById('pt-moneda').value = getConfig().moneda||'ARS';
+    document.getElementById('pt-stock').value='disponible';
+    document.getElementById('pt-destacado').checked=false;
+  }
+  previewImagenPT();
+  document.getElementById('modal-producto-tienda').classList.add('open');
+}
+
+function guardarProductoTienda() {
+  const nombre = document.getElementById('pt-nombre').value.trim();
+  if (!nombre) { toast('Completá el nombre del producto'); return; }
+  const id = document.getElementById('pt-id').value;
+  const prod = {
+    id: id || uid(),
+    nombre,
+    categoria: document.getElementById('pt-categoria').value.trim(),
+    descripcion: document.getElementById('pt-descripcion').value.trim(),
+    precio: parseFloat(document.getElementById('pt-precio').value)||0,
+    moneda: document.getElementById('pt-moneda').value,
+    stock: document.getElementById('pt-stock').value,
+    imagenUrl: document.getElementById('pt-imagen').value.trim(),
+    mpLink: document.getElementById('pt-mp-link').value.trim(),
+    destacado: document.getElementById('pt-destacado').checked,
+  };
+  const lista = getTiendaProductos();
+  const idx = lista.findIndex(x=>x.id===prod.id);
+  if (idx>=0) lista[idx]=prod; else lista.push(prod);
+  DB.set('tienda_productos', lista);
+  cerrarModal('modal-producto-tienda');
+  renderTiendaProductos();
+  toast('Producto guardado ✓');
+}
+
+function borrarProductoTienda(id) {
+  if (!confirm('¿Eliminar este producto de la tienda?')) return;
+  DB.set('tienda_productos', getTiendaProductos().filter(x=>x.id!==id));
+  renderTiendaProductos();
+  toast('Producto eliminado');
+}
+
+// ── Publicar: sube un JSON curado (solo datos públicos) a un Gist SEPARADO ──
+async function publicarTienda() {
+  const {token} = getGistCreds();
+  const tc = getTiendaConfig();
+  if (!token) { toast('Configurá primero tu token en Configuración → Sincronización'); return; }
+  if (!tc.githubUser || !tc.tiendaGistId) { toast('Completá Usuario de GitHub y Gist ID de la tienda'); return; }
+
+  const cfg = getConfig();
+  const payload = {
+    tienda: {
+      nombre: cfg.negocio || 'ADNlab',
+      whatsapp: tc.whatsapp || '',
+      cuotasHabilitado: !!tc.cuotasHabilitado,
+      cuotasTexto: tc.cuotasTexto || '',
+      datosTransferencia: cfg.datosTransferencia || '',
+      condicionesPago: cfg.condicionesPago || '',
+      actualizado: new Date().toISOString(),
+    },
+    productos: getTiendaProductos(),
+  };
+
+  setSyncStatus('syncing','Publicando tienda...');
+  try {
+    const r = await fetch('https://api.github.com/gists/'+tc.tiendaGistId, {
+      method: 'PATCH',
+      headers: { Authorization: 'token '+token, Accept: 'application/vnd.github.v3+json', 'Content-Type': 'application/json' },
+      body: JSON.stringify({ files: { 'tienda-data.json': { content: JSON.stringify(payload) } } })
+    });
+    if (r.ok) {
+      tc.ultimaPublicacion = new Date().toISOString();
+      DB.set('tienda_config', tc);
+      actualizarTiendaBadge();
+      setSyncStatus('ok','Tienda publicada');
+      toast('Tienda publicada ✓ — puede tardar unos minutos en verse reflejada', 4000);
+    } else {
+      setSyncStatus('error','Error al publicar');
+      toast('Error al publicar — revisá el token y el Gist ID');
+    }
+  } catch(e) {
+    setSyncStatus('error','Sin conexion');
+    toast('Sin conexión');
+  }
 }
 
 </script>
