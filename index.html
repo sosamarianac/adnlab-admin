@@ -631,9 +631,17 @@
       <div class="field"><label>Cantidad</label><input type="number" id="mp-cantidad" value="1" min="1" /></div>
       <div class="field"><label>Fecha prometida</label><input type="date" id="mp-fecha" /></div>
     </div>
-    <div class="form-row">
-      <div class="field"><label>Cotización vinculada (opcional)</label>
-        <select id="mp-cotizacion"><option value="">— Sin cotización —</option></select>
+    <div class="form-row cols-2">
+      <div class="field"><label>Origen de la cotización</label>
+        <select id="mp-cotizacion-origen" onchange="onCambioOrigenCotizacion()">
+          <option value="">— Sin cotización vinculada —</option>
+          <option value="personal">Cotizador personal</option>
+          <option value="cliente">Cotización Cliente</option>
+        </select>
+      </div>
+      <div class="field" id="mp-cotizacion-select-wrap" style="display:none;">
+        <label id="mp-cotizacion-select-label">Cotización</label>
+        <select id="mp-cotizacion"><option value="">— Elegí una —</option></select>
       </div>
     </div>
     <div id="mp-insumos-info" style="display:none" class="stock-alert" style="margin-bottom:8px;">
@@ -981,7 +989,7 @@ const ADNLAB_LOGO = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAfQAAAEzCAYAA
 // ═══════════════════════════════════════════════════════
 // GIST SYNC — capa de datos con sincronizacion en la nube
 // ═══════════════════════════════════════════════════════
-const GIST_KEYS = ['pedidos','cotizaciones','materiales','movimientos','config','clientes','catalogo','tipo_cambio','cotizaciones_cliente','tienda_productos','tienda_config'];
+const GIST_KEYS = ['pedidos','cotizaciones','materiales','movimientos','config','clientes','catalogo','tipo_cambio','cotizaciones_cliente','tienda_productos','tienda_config','contadores'];
 
 // LocalStorage — fuente de verdad local
 const LS = {
@@ -1070,6 +1078,20 @@ const getCots       = () => DB.get('cotizaciones') || [];
 const getMateriales = () => DB.get('materiales') || [];
 const getMovimientos= () => DB.get('movimientos') || [];
 const uid           = () => Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+
+// ═══════════════════════════════════════════════════════
+// NUMERACIÓN CORRELATIVA — contadores separados por tipo
+// Cotizaciones (personales y de cliente comparten serie T) y Pedidos (serie P)
+// ═══════════════════════════════════════════════════════
+function siguienteNumero(tipo) {
+  // tipo: 'cotizacion' (prefijo T, 4 dígitos) | 'pedido' (prefijo P, 5 dígitos)
+  const contadores = DB.get('contadores') || { cotizacion: 0, pedido: 0 };
+  contadores[tipo] = (contadores[tipo] || 0) + 1;
+  DB.set('contadores', contadores);
+  const digitos = tipo === 'pedido' ? 5 : 4;
+  const prefijo = tipo === 'pedido' ? 'P' : 'T';
+  return prefijo + '-' + String(contadores[tipo]).padStart(digitos, '0');
+}
 
 // ═══════════════════════════════════════════════════════
 // STOCK RESERVADO — materiales comprometidos en pedidos activos
@@ -1389,7 +1411,7 @@ function guardarCotizacion() {
   if (!window._lastCalc) { toast('Calculá primero'); return; }
   const c = window._lastCalc;
   const cot = {
-    id: uid(), fecha: new Date().toISOString(), nombre,
+    id: uid(), numero: siguienteNumero('cotizacion'), fecha: new Date().toISOString(), nombre,
     cliente:      document.getElementById('q-cliente').value,
     clienteEmail: document.getElementById('q-cliente-email').value,
     descripcion:  document.getElementById('q-descripcion').value,
@@ -1419,10 +1441,11 @@ function renderCotizacionesGuardadas() {
   const el = document.getElementById('q-cotizaciones-guardadas');
   if (!cots.length) { el.innerHTML=''; return; }
   el.innerHTML = `<div class="card"><div class="card-title">Cotizaciones guardadas</div><div class="table-wrap"><table>
-    <thead><tr><th>Fecha</th><th>Producto</th><th>Cliente</th><th>Uds</th><th>Precio/u</th><th>Insumos</th><th>Margen</th><th></th></tr></thead>
+    <thead><tr><th>N°</th><th>Fecha</th><th>Producto</th><th>Cliente</th><th>Uds</th><th>Precio/u</th><th>Insumos</th><th>Margen</th><th></th></tr></thead>
     <tbody>${cots.map(c=>{
       const nIns = (c.insumosVinculados||[]).length + (c.filMatId?1:0);
       return `<tr>
+        <td class="text-sm" style="font-weight:600;letter-spacing:0.02em;">${c.numero||'—'}</td>
         <td class="text-muted text-sm">${fmtFecha(c.fecha)}</td>
         <td><strong>${c.nombre}</strong></td>
         <td>${c.cliente||'—'}</td>
@@ -1524,8 +1547,13 @@ function exportarPDFCotizacion() {
   const nombre = document.getElementById('q-nombre').value.trim();
   if (!nombre) { toast('Completá el nombre'); return; }
   const c = window._lastCalc;
+  // Si esta cotización ya fue guardada (mismo nombre+cliente), reusamos su número.
+  // Si no, mostramos "BORRADOR" — se le asigna número real al guardarla.
+  const cliente = document.getElementById('q-cliente').value;
+  const yaGuardada = getCots().find(x=>x.nombre===nombre && (x.cliente||'')===(cliente||''));
   generarPDF({
-    nombre, cliente: document.getElementById('q-cliente').value,
+    numero: yaGuardada?.numero || 'BORRADOR',
+    nombre, cliente,
     clienteEmail: document.getElementById('q-cliente-email').value,
     descripcion:  document.getElementById('q-descripcion').value,
     validez: parseInt(document.getElementById('q-validez').value)||7,
@@ -1541,6 +1569,7 @@ function exportarPDFCotizacion() {
 function exportarPDFById(id) {
   const c = getCots().find(x=>x.id===id); if (!c) return;
   generarPDF({
+    numero: c.numero || 'S/N',
     nombre: c.nombre, cliente: c.cliente, clienteEmail: c.clienteEmail,
     descripcion: c.descripcion, validez: c.validez,
     moneda: c.moneda, precioUnitario: c.precioUnitario, costoUnitario: c.costoUnitario,
@@ -1598,7 +1627,7 @@ function generarPDF(d) {
   const BLUE=[35,63,147];
   const ahora = new Date();
   const vence = new Date(ahora); vence.setDate(vence.getDate()+(d.validez||7));
-  const nCot  = 'COT-'+ahora.toISOString().replace(/[-:T.Z]/g,'').slice(0,14);
+  const nCot  = d.numero || 'S/N';
 
   // Logo + encabezado
   doc.addImage(ADNLAB_LOGO,'PNG',12,8,30,18.4);
@@ -1710,11 +1739,11 @@ function renderPedidos() {
     el.innerHTML='<div class="empty"><i class="ti ti-clipboard-list"></i><p>No hay pedidos en esta vista</p></div>'; return;
   }
   el.innerHTML=`<div class="table-wrap"><table>
-    <thead><tr><th>#</th><th>Producto</th><th>Cliente</th><th>Qty</th><th>Precio</th><th>Fecha prometida</th><th>Insumos</th><th>Estado</th><th></th></tr></thead>
+    <thead><tr><th>N°</th><th>Producto</th><th>Cliente</th><th>Qty</th><th>Precio</th><th>Fecha prometida</th><th>Insumos</th><th>Estado</th><th></th></tr></thead>
     <tbody>${lista.map((p,i)=>{
       const nIns = (p.insumosVinculados||[]).length + (p.filMatId?1:0);
       return `<tr>
-        <td class="text-muted text-sm">${String(i+1).padStart(3,'0')}</td>
+        <td class="text-muted text-sm" style="font-weight:600;letter-spacing:0.02em;">${p.numero||'—'}</td>
         <td><strong>${p.nombre}</strong>${p.notas?`<div class="text-sm text-muted mt-4">${p.notas.slice(0,50)}${p.notas.length>50?'…':''}</div>`:''}</td>
         <td>${p.cliente||'—'}</td>
         <td>${p.cantidad}</td>
@@ -1748,25 +1777,21 @@ function abrirModalPedido(id, prefill) {
   document.getElementById('modal-pedido-title').textContent = id?'Editar pedido':'Nuevo pedido';
   document.getElementById('mp-id').value = id||'';
 
-  // Poblar cotizaciones
+  const origenSel = document.getElementById('mp-cotizacion-origen');
   const sel = document.getElementById('mp-cotizacion');
-  sel.innerHTML = '<option value="">— Sin cotización —</option>';
-  getCots().forEach(c=>{
-    const o = document.createElement('option');
-    o.value=c.id; o.textContent=`${c.nombre} — ${fmt(c.precioUnitario,c.moneda)}`;
-    sel.appendChild(o);
-  });
 
   if (id) {
     const p = getPedidos().find(x=>x.id===id); if (!p) return;
     const s=(eid,v)=>{const el=document.getElementById(eid);if(el)el.value=v??'';};
     s('mp-nombre',p.nombre); s('mp-cliente',p.cliente); s('mp-cantidad',p.cantidad);
-    s('mp-fecha',p.fechaPrometida||''); s('mp-cotizacion',p.cotizacionId||'');
+    s('mp-fecha',p.fechaPrometida||'');
     s('mp-precio',p.precio||''); s('mp-moneda',p.moneda||'ARS');
     s('mp-estado',p.estado); s('mp-notas',p.notas||'');
     s('mp-cobrado',p.cobrado||''); s('mp-moneda-cobro',p.monedaCobro||'ARS');
     s('mp-medio',p.medioPago||'efectivo'); s('mp-fecha-entrega',p.fechaEntrega||'');
-    // Mostrar info de insumos vinculados
+
+    origenSel.value = p.cotizacionOrigen || (p.cotizacionId ? 'personal' : '');
+    poblarSelectCotizacionPedido(origenSel.value, p.cotizacionId);
     mostrarInfoInsumosModal(p.insumosVinculados||[], p.filMatId, p.gramosPorUnidad, p.cantidad||1, id);
   } else {
     ['mp-nombre','mp-cliente','mp-precio','mp-notas','mp-cobrado','mp-fecha-entrega','mp-fecha'].forEach(eid=>{
@@ -1778,6 +1803,8 @@ function abrirModalPedido(id, prefill) {
     document.getElementById('mp-moneda').value=cfg.moneda||'ARS';
     document.getElementById('mp-moneda-cobro').value=cfg.moneda||'ARS';
     document.getElementById('mp-insumos-info').style.display='none';
+    origenSel.value = '';
+    poblarSelectCotizacionPedido('', null);
     if (prefill) {
       if (prefill.nombre)   document.getElementById('mp-nombre').value=prefill.nombre;
       if (prefill.cliente)  document.getElementById('mp-cliente').value=prefill.cliente;
@@ -1791,20 +1818,81 @@ function abrirModalPedido(id, prefill) {
   document.getElementById('mp-estado').onchange = toggleEntregaSection;
   toggleEntregaSection();
 
-  // Al vincular cotización, cargar precio e insumos
+  // Al elegir una cotización vinculada, cargar precio (e insumos si es personal)
   sel.onchange = ()=>{
     const cid = sel.value;
+    const origen = origenSel.value;
     if (!cid) { document.getElementById('mp-insumos-info').style.display='none'; return; }
-    const c = getCots().find(x=>x.id===cid);
-    if (!c) return;
-    document.getElementById('mp-precio').value = c.precioUnitario.toFixed(2);
-    document.getElementById('mp-moneda').value = c.moneda;
-    if (!document.getElementById('mp-nombre').value) document.getElementById('mp-nombre').value=c.nombre;
     const qty = parseInt(document.getElementById('mp-cantidad').value)||1;
-    mostrarInfoInsumosModal(c.insumosVinculados||[], c.filMatId, c.gramosPorUnidad, qty, id||null);
+
+    if (origen === 'cliente') {
+      const cc = getCotizacionesCliente().find(x=>x.id===cid);
+      if (!cc) return;
+      const totals = {};
+      (cc.items||[]).forEach(it => { totals[it.moneda] = (totals[it.moneda]||0) + it.costoUnitario*it.cantidad; });
+      const [monPrincipal, totalPrincipal] = Object.entries(totals)[0] || ['ARS', 0];
+      document.getElementById('mp-precio').value = totalPrincipal.toFixed(2);
+      document.getElementById('mp-moneda').value = monPrincipal;
+      if (!document.getElementById('mp-nombre').value) {
+        document.getElementById('mp-nombre').value = (cc.items||[]).map(it=>it.nombre).join(' + ');
+      }
+      if (!document.getElementById('mp-cliente').value) document.getElementById('mp-cliente').value = cc.cliente;
+      // Las cotizaciones de cliente no traen receta de materiales/stock propia
+      document.getElementById('mp-insumos-info').style.display='none';
+    } else {
+      const c = getCots().find(x=>x.id===cid);
+      if (!c) return;
+      document.getElementById('mp-precio').value = c.precioUnitario.toFixed(2);
+      document.getElementById('mp-moneda').value = c.moneda;
+      if (!document.getElementById('mp-nombre').value) document.getElementById('mp-nombre').value=c.nombre;
+      mostrarInfoInsumosModal(c.insumosVinculados||[], c.filMatId, c.gramosPorUnidad, qty, id||null);
+    }
   };
 
   document.getElementById('modal-pedido').classList.add('open');
+}
+
+function onCambioOrigenCotizacion() {
+  const origen = document.getElementById('mp-cotizacion-origen').value;
+  poblarSelectCotizacionPedido(origen, null);
+}
+
+function poblarSelectCotizacionPedido(origen, selectedId) {
+  const wrap  = document.getElementById('mp-cotizacion-select-wrap');
+  const sel   = document.getElementById('mp-cotizacion');
+  const label = document.getElementById('mp-cotizacion-select-label');
+
+  if (!origen) {
+    wrap.style.display = 'none';
+    sel.innerHTML = '<option value="">— Elegí una —</option>';
+    document.getElementById('mp-insumos-info').style.display = 'none';
+    return;
+  }
+
+  wrap.style.display = 'flex';
+  sel.innerHTML = '<option value="">— Elegí una —</option>';
+
+  if (origen === 'cliente') {
+    label.textContent = 'Cotización Cliente';
+    getCotizacionesCliente().forEach(cc=>{
+      const o = document.createElement('option');
+      o.value = cc.id;
+      const totals = {};
+      (cc.items||[]).forEach(it => { totals[it.moneda] = (totals[it.moneda]||0) + it.costoUnitario*it.cantidad; });
+      const resumen = Object.entries(totals).map(([mon,val])=>fmt(val,mon)).join(' + ');
+      o.textContent = `${cc.numero?cc.numero+' — ':''}${cc.cliente} (${(cc.items||[]).map(it=>it.nombre).join(', ')}) — ${resumen}`;
+      sel.appendChild(o);
+    });
+  } else {
+    label.textContent = 'Cotización personal';
+    getCots().forEach(c=>{
+      const o = document.createElement('option');
+      o.value = c.id;
+      o.textContent = `${c.numero?c.numero+' — ':''}${c.nombre} — ${fmt(c.precioUnitario,c.moneda)}`;
+      sel.appendChild(o);
+    });
+  }
+  if (selectedId) sel.value = selectedId;
 }
 
 function mostrarInfoInsumosModal(insumos, filMatId, gramosPorUnidad, qty, excluirPedidoId) {
@@ -1840,17 +1928,22 @@ function guardarPedido() {
   const prevPedido = id ? getPedidos().find(x=>x.id===id) : null;
   const prevEstado = prevPedido?.estado;
 
-  // Obtener insumos de la cotización vinculada (si hay)
-  const cotId = document.getElementById('mp-cotizacion').value;
-  const cot   = cotId ? getCots().find(x=>x.id===cotId) : null;
+  // Obtener insumos de la cotización vinculada (si hay). Solo las cotizaciones del
+  // cotizador PERSONAL traen receta de materiales/stock; las de Cotización Cliente
+  // son un resumen comercial (producto + cantidad + costo) sin receta física.
+  const origen = document.getElementById('mp-cotizacion-origen').value;
+  const cotId  = document.getElementById('mp-cotizacion').value;
+  const cotPersonal = (origen==='personal' && cotId) ? getCots().find(x=>x.id===cotId) : null;
 
   const pedido = {
     id: id||uid(),
+    numero: prevPedido?.numero || siguienteNumero('pedido'),
     creado: prevPedido?.creado || new Date().toISOString(),
     nombre, cliente: document.getElementById('mp-cliente').value,
     cantidad: parseInt(document.getElementById('mp-cantidad').value)||1,
     fechaPrometida: document.getElementById('mp-fecha').value,
-    cotizacionId: cotId,
+    cotizacionOrigen: origen || null,
+    cotizacionId: cotId || null,
     precio: parseFloat(document.getElementById('mp-precio').value)||null,
     moneda: document.getElementById('mp-moneda').value,
     estado,
@@ -1859,10 +1952,10 @@ function guardarPedido() {
     monedaCobro:estado==='entregado' ? document.getElementById('mp-moneda-cobro').value : null,
     medioPago:  estado==='entregado' ? document.getElementById('mp-medio').value : null,
     fechaEntrega:estado==='entregado'? document.getElementById('mp-fecha-entrega').value : null,
-    // insumos vinculados desde la cotización
-    insumosVinculados: cot?.insumosVinculados || prevPedido?.insumosVinculados || [],
-    filMatId:      cot?.filMatId      || prevPedido?.filMatId      || null,
-    gramosPorUnidad: cot?.gramosPorUnidad || prevPedido?.gramosPorUnidad || null,
+    // insumos vinculados (solo aplica si el origen es cotizador personal)
+    insumosVinculados: cotPersonal?.insumosVinculados || (origen==='personal' ? prevPedido?.insumosVinculados : []) || [],
+    filMatId:      cotPersonal?.filMatId      || (origen==='personal' ? prevPedido?.filMatId      : null) || null,
+    gramosPorUnidad: cotPersonal?.gramosPorUnidad || (origen==='personal' ? prevPedido?.gramosPorUnidad : null) || null,
     stockDescontado: prevPedido?.stockDescontado || false,
   };
 
@@ -3071,8 +3164,9 @@ function renderCotizacionesCliente() {
     return;
   }
   el.innerHTML = `<div class="table-wrap"><table>
-    <thead><tr><th>Fecha</th><th>Cliente</th><th>Productos</th><th>Total</th><th></th></tr></thead>
+    <thead><tr><th>N°</th><th>Fecha</th><th>Cliente</th><th>Productos</th><th>Total</th><th></th></tr></thead>
     <tbody>${lista.map(cc=>`<tr>
+      <td class="text-sm" style="font-weight:600;letter-spacing:0.02em;">${cc.numero||'—'}</td>
       <td class="text-sm text-muted">${fmtFecha(cc.fecha)}</td>
       <td><strong>${cc.cliente}</strong>${cc.clienteEmail?`<div class="text-sm text-muted mt-4">${cc.clienteEmail}</div>`:''}</td>
       <td class="text-sm">${(cc.items||[]).map(it=>`${it.nombre} ×${it.cantidad}`).join(', ')}</td>
@@ -3193,6 +3287,7 @@ function guardarCotCliente() {
   const prev = id ? getCotizacionesCliente().find(x=>x.id===id) : null;
   const cc = {
     id: id || uid(),
+    numero: prev?.numero || siguienteNumero('cotizacion'),
     fecha: prev?.fecha || new Date().toISOString(),
     cliente,
     clienteEmail: document.getElementById('cc-email').value,
@@ -3237,7 +3332,7 @@ function generarPDFCliente(cc) {
   const W=210, H=297;
   const BLUE=[35,63,147];
   const vence = new Date(cc.fecha); vence.setDate(vence.getDate()+(cc.validez||7));
-  const nCot  = 'COT-'+cc.id.toUpperCase();
+  const nCot  = cc.numero || 'S/N';
 
   // Logo + encabezado
   doc.addImage(ADNLAB_LOGO,'PNG',12,8,30,18.4);
